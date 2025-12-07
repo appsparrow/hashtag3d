@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { ArrowDown, Printer } from "lucide-react";
+import { ArrowDown, Printer, Settings } from "lucide-react";
+import { Link } from "react-router-dom";
 import heroBg from "@/assets/hero-bg.jpg";
 
 export function Hero() {
@@ -9,6 +10,14 @@ export function Hero() {
 
   return (
     <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
+      {/* Admin Link */}
+      <Link 
+        to="/auth" 
+        className="absolute top-4 right-4 z-20 p-2 rounded-lg bg-primary-foreground/10 backdrop-blur-sm text-primary-foreground/60 hover:text-primary-foreground transition-colors"
+      >
+        <Settings className="w-5 h-5" />
+      </Link>
+
       {/* Background Image */}
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
