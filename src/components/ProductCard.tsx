@@ -3,6 +3,7 @@ import { Heart, ShoppingBag, Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Product } from "@/hooks/useProducts";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ProductCardProps {
   product: Product;
@@ -12,10 +13,29 @@ interface ProductCardProps {
 export function ProductCard({ product, onOrder }: ProductCardProps) {
   const [likes, setLikes] = useState(product.likes_count);
   const [liked, setLiked] = useState(false);
+  const [isLiking, setIsLiking] = useState(false);
 
-  const handleLike = () => {
-    setLikes(liked ? likes - 1 : likes + 1);
-    setLiked(!liked);
+  const handleLike = async () => {
+    if (isLiking) return;
+    
+    setIsLiking(true);
+    const newLikeCount = liked ? likes - 1 : likes + 1;
+    
+    try {
+      const { error } = await supabase
+        .from("products")
+        .update({ likes_count: newLikeCount })
+        .eq("id", product.id);
+      
+      if (!error) {
+        setLikes(newLikeCount);
+        setLiked(!liked);
+      }
+    } catch (error) {
+      console.error("Error updating likes:", error);
+    } finally {
+      setIsLiking(false);
+    }
   };
 
   const imageUrl =
