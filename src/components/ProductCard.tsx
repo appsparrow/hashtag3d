@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Product } from "@/hooks/useProducts";
 import { supabase } from "@/integrations/supabase/client";
-
+import defaultProductImage from "@/assets/default-product.jpg";
 interface ProductCardProps {
   product: Product;
   onOrder: (product: Product) => void;
@@ -35,9 +35,7 @@ export function ProductCard({ product, onOrder }: ProductCardProps) {
     }
   };
 
-  const imageUrl =
-    product.images?.[0] ||
-    "https://unsplash.com/photos/a-stack-of-different-colored-toys-on-top-of-each-other-5SyRRUvaets?w=400&h=400&fit=crop";
+  const imageUrl = product.images?.[0] || defaultProductImage;
 
   return (
     <Card className="group overflow-hidden card-hover">
