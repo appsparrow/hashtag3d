@@ -7,6 +7,7 @@ export type OrderStatus = "pending" | "in_progress" | "completed" | "cancelled";
 
 export interface Order {
   id: string;
+  order_number: string | null;
   product_id: string | null;
   customer_name: string;
   customer_email: string;
