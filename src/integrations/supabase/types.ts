@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      local_settings: {
+        Row: {
+          created_at: string
+          id: string
+          setting_key: string
+          setting_value: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          setting_key: string
+          setting_value?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          setting_key?: string
+          setting_value?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           created_at: string
@@ -25,6 +49,7 @@ export type Database = {
           delivery_location: string
           id: string
           notes: string | null
+          order_number: string | null
           product_id: string | null
           product_price: number
           selected_color: string | null
@@ -46,6 +71,7 @@ export type Database = {
           delivery_location?: string
           id?: string
           notes?: string | null
+          order_number?: string | null
           product_id?: string | null
           product_price: number
           selected_color?: string | null
@@ -67,6 +93,7 @@ export type Database = {
           delivery_location?: string
           id?: string
           notes?: string | null
+          order_number?: string | null
           product_id?: string | null
           product_price?: number
           selected_color?: string | null
