@@ -76,10 +76,15 @@ export default function Orders() {
                           {statusLabels[order.status]}
                         </Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                        {format(new Date(order.created_at), "MMM d, yyyy 'at' h:mm a")}
-                      </p>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        {order.order_number && (
+                          <span className="font-mono font-medium text-primary">{order.order_number}</span>
+                        )}
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-4 h-4" />
+                          {format(new Date(order.created_at), "MMM d, yyyy 'at' h:mm a")}
+                        </span>
+                      </div>
                     </div>
                     
                     <Select
