@@ -1,4 +1,4 @@
-import { Printer, Mail, Instagram, MessageCircle } from "lucide-react";
+import { Printer, Mail, Instagram, MessageCircle, Youtube } from "lucide-react";
 
 export function Footer() {
   return (
@@ -53,11 +53,22 @@ export function Footer() {
                 <Mail className="w-5 h-5" />
               </a>
               <a
-                href="#"
+                href="https://instagram.com"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="p-2.5 rounded-full bg-background border border-border text-muted-foreground hover:text-primary hover:border-primary transition-all"
                 aria-label="Instagram"
               >
                 <Instagram className="w-5 h-5" />
+              </a>
+              <a
+                href="https://youtube.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2.5 rounded-full bg-background border border-border text-muted-foreground hover:text-primary hover:border-primary transition-all"
+                aria-label="YouTube"
+              >
+                <Youtube className="w-5 h-5" />
               </a>
               <a
                 href="#"
