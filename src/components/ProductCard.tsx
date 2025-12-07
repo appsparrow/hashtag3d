@@ -17,16 +17,13 @@ export function ProductCard({ product, onOrder }: ProductCardProps) {
 
   const handleLike = async () => {
     if (isLiking) return;
-    
+
     setIsLiking(true);
     const newLikeCount = liked ? likes - 1 : likes + 1;
-    
+
     try {
-      const { error } = await supabase
-        .from("products")
-        .update({ likes_count: newLikeCount })
-        .eq("id", product.id);
-      
+      const { error } = await supabase.from("products").update({ likes_count: newLikeCount }).eq("id", product.id);
+
       if (!error) {
         setLikes(newLikeCount);
         setLiked(!liked);
@@ -40,7 +37,7 @@ export function ProductCard({ product, onOrder }: ProductCardProps) {
 
   const imageUrl =
     product.images?.[0] ||
-    "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=400&fit=crop";
+    "https://unsplash.com/photos/a-stack-of-different-colored-toys-on-top-of-each-other-5SyRRUvaets?w=400&h=400&fit=crop";
 
   return (
     <Card className="group overflow-hidden card-hover">
