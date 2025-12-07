@@ -18,7 +18,9 @@ export function ProductCard({ product, onOrder }: ProductCardProps) {
     setLiked(!liked);
   };
 
-  const imageUrl = product.images?.[0] || "https://images.unsplash.com/photo-1581833971358-2c8b550f87b3?w=400&h=400&fit=crop";
+  const imageUrl =
+    product.images?.[0] ||
+    "https://images.unsplash.com/photo-1667753147067-87f4b81179c1?q=80&w=1480&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D?w=400&h=400&fit=crop";
 
   return (
     <Card className="group overflow-hidden card-hover">
@@ -28,7 +30,7 @@ export function ProductCard({ product, onOrder }: ProductCardProps) {
           alt={product.title}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
-        
+
         {product.is_customizable && (
           <div className="absolute top-3 left-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent text-accent-foreground text-xs font-semibold">
             <Sparkles className="w-3 h-3" />
@@ -39,7 +41,9 @@ export function ProductCard({ product, onOrder }: ProductCardProps) {
         <button
           onClick={handleLike}
           className={`absolute top-3 right-3 p-2.5 rounded-full transition-all duration-300 ${
-            liked ? "bg-terracotta text-primary-foreground scale-110" : "bg-card/90 backdrop-blur-sm text-muted-foreground hover:text-terracotta hover:scale-110"
+            liked
+              ? "bg-terracotta text-primary-foreground scale-110"
+              : "bg-card/90 backdrop-blur-sm text-muted-foreground hover:text-terracotta hover:scale-110"
           }`}
         >
           <Heart className={`w-4 h-4 ${liked ? "fill-current" : ""}`} />
@@ -56,9 +60,7 @@ export function ProductCard({ product, onOrder }: ProductCardProps) {
               ${Number(product.price).toFixed(2)}
             </span>
           </div>
-          {product.description && (
-            <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>
-          )}
+          {product.description && <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>}
         </div>
 
         {product.personalization_options && (
