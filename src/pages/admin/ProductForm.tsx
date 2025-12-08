@@ -28,6 +28,7 @@ const COMPLEXITY_OPTIONS: { value: ComplexityTier; label: string }[] = [
 interface ExtendedProductData extends CreateProductData {
   material_category?: MaterialCategory;
   complexity?: ComplexityTier;
+  num_colors?: number;
 }
 
 export default function ProductForm() {
@@ -57,6 +58,7 @@ export default function ProductForm() {
     is_active: true,
     material_category: "standard",
     complexity: "simple",
+    num_colors: 1,
   });
 
   const [uploading, setUploading] = useState(false);
@@ -273,23 +275,38 @@ export default function ProductForm() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Complexity</Label>
-                  <Select
-                    value={formData.complexity}
-                    onValueChange={(value: ComplexityTier) => setFormData({ ...formData, complexity: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {COMPLEXITY_OPTIONS.map(opt => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Complexity</Label>
+                    <Select
+                      value={formData.complexity}
+                      onValueChange={(value: ComplexityTier) => setFormData({ ...formData, complexity: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COMPLEXITY_OPTIONS.map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="num_colors">Number of Colors Used</Label>
+                    <Input
+                      id="num_colors"
+                      type="number"
+                      min="1"
+                      max="8"
+                      value={formData.num_colors || 1}
+                      onChange={(e) => setFormData({ ...formData, num_colors: parseInt(e.target.value) || 1 })}
+                    />
+                    <p className="text-xs text-muted-foreground">How many colors for AMS pricing. Customer picks which ones.</p>
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
@@ -370,10 +387,13 @@ export default function ProductForm() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Palette className="w-5 h-5" />
-                  Available Colors
+                  Available Colors for Customers
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Select colors customers can choose from. Customer will pick {formData.num_colors || 1} color{(formData.num_colors || 1) !== 1 ? 's' : ''}.
+                </p>
                 {Object.entries(colorsByCategory).map(([category, colors]) => (
                   <div key={category} className="space-y-2">
                     <Label className="capitalize text-muted-foreground">{category} Colors</Label>
@@ -402,7 +422,7 @@ export default function ProductForm() {
                 {formData.colors && formData.colors.length > 0 && (
                   <div className="pt-2 border-t">
                     <p className="text-sm text-muted-foreground">
-                      Selected: {formData.colors.length} color{formData.colors.length !== 1 ? 's' : ''}
+                      {formData.colors.length} color options available for customers
                     </p>
                   </div>
                 )}
@@ -540,7 +560,7 @@ export default function ProductForm() {
           <ProductPricingPanel
             basePrice={formData.price}
             materialCategory={formData.material_category || "standard"}
-            numColors={formData.colors?.length || 1}
+            numColors={formData.num_colors || 1}
             complexity={formData.complexity || "simple"}
             isCustomizable={formData.is_customizable}
           />

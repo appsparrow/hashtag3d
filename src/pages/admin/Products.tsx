@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import { Plus, Edit, Trash2, Eye, EyeOff } from "lucide-react";
+import { Plus, Edit, Trash2, EyeOff, TrendingUp, TrendingDown } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,10 +16,79 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { usePricingSettings, useComplexitySettings, calculatePrice, MaterialCategory, ComplexityTier } from "@/hooks/usePricing";
+import { useMemo } from "react";
+
+interface ProductWithProfitability {
+  id: string;
+  title: string;
+  description: string | null;
+  price: number;
+  is_active: boolean;
+  is_customizable: boolean;
+  category: string;
+  colors: string[] | null;
+  images: string[] | null;
+  product_number: string | null;
+  estimatedProfit: number;
+  estimatedMarginPercent: number;
+  isProfitable: boolean;
+}
 
 export default function Products() {
   const { data: products, isLoading } = useProducts(true);
   const deleteProduct = useDeleteProduct();
+  const { data: pricingSettings } = usePricingSettings();
+  const { data: complexitySettings } = useComplexitySettings();
+
+  const profitMargin = useMemo(() => {
+    return pricingSettings?.find(s => s.setting_key === 'profit_margin')?.setting_value || 40;
+  }, [pricingSettings]);
+
+  // Calculate profitability for each product
+  const productsWithProfitability = useMemo((): ProductWithProfitability[] | undefined => {
+    if (!products || !pricingSettings || !complexitySettings) return undefined;
+    
+    return products.map(product => {
+      // Estimate cost based on product category (material) and complexity
+      const materialCategory = (product.category as MaterialCategory) || 'standard';
+      const complexity: ComplexityTier = 'simple'; // Default assumption
+      const numColors = product.colors?.length || 1;
+      
+      const pricing = calculatePrice({
+        basePrice: 0, // We don't have the base cost stored
+        materialCategory,
+        numColors: Math.min(numColors, 4), // Cap at 4 for estimation
+        complexity,
+        customizationFee: product.is_customizable ? 2 : 0,
+        pricingSettings,
+        complexitySettings,
+        profitMargin,
+      });
+      
+      // Estimate profit margin based on selling price vs estimated fees
+      const sellingPrice = Number(product.price);
+      const estimatedCost = pricing.materialUpcharge + pricing.amsFee + pricing.complexityFee + pricing.customizationFee;
+      const estimatedProfit = sellingPrice - estimatedCost;
+      const estimatedMarginPercent = sellingPrice > 0 ? (estimatedProfit / sellingPrice) * 100 : 0;
+      
+      return {
+        id: product.id,
+        title: product.title,
+        description: product.description,
+        price: Number(product.price),
+        is_active: product.is_active,
+        is_customizable: product.is_customizable,
+        category: product.category,
+        colors: product.colors,
+        images: product.images,
+        product_number: product.product_number,
+        estimatedProfit,
+        estimatedMarginPercent,
+        isProfitable: estimatedMarginPercent >= profitMargin,
+      };
+    });
+  }, [products, pricingSettings, complexitySettings, profitMargin]);
 
   if (isLoading) {
     return (
@@ -51,9 +120,9 @@ export default function Products() {
         </div>
 
         {/* Products Grid */}
-        {products && products.length > 0 ? (
+        {productsWithProfitability && productsWithProfitability.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {products.map((product) => (
+            {productsWithProfitability.map((product) => (
               <Card key={product.id} className={`overflow-hidden ${!product.is_active ? 'opacity-60' : ''}`}>
                 <div className="aspect-video relative">
                   {product.images && product.images.length > 0 ? (
@@ -80,6 +149,14 @@ export default function Products() {
                       </Badge>
                     )}
                   </div>
+                  {/* Product Number */}
+                  {product.product_number && (
+                    <div className="absolute top-2 left-2">
+                      <Badge variant="secondary" className="bg-background/80 font-mono text-xs">
+                        #{product.product_number}
+                      </Badge>
+                    </div>
+                  )}
                 </div>
                 
                 <CardContent className="p-4 space-y-3">
@@ -88,6 +165,24 @@ export default function Products() {
                     <span className="font-bold text-primary whitespace-nowrap">
                       ${Number(product.price).toFixed(2)}
                     </span>
+                  </div>
+                  
+                  {/* Profitability Indicator */}
+                  <div className="flex items-center gap-2">
+                    {product.isProfitable ? (
+                      <Badge variant="outline" className="text-green-600 border-green-600/30 bg-green-50 dark:bg-green-950/30">
+                        <TrendingUp className="w-3 h-3 mr-1" />
+                        {product.estimatedMarginPercent.toFixed(0)}% margin
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-amber-600 border-amber-600/30 bg-amber-50 dark:bg-amber-950/30">
+                        <TrendingDown className="w-3 h-3 mr-1" />
+                        {product.estimatedMarginPercent.toFixed(0)}% margin
+                      </Badge>
+                    )}
+                    <Badge variant="outline" className="capitalize text-xs">
+                      {product.category}
+                    </Badge>
                   </div>
                   
                   {product.description && (

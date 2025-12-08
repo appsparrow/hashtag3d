@@ -60,6 +60,10 @@ export default function Pricing() {
 
   const isLoading = loadingMaterials || loadingColors || loadingComplexity || loadingFinish || loadingCustomization || loadingPricing;
 
+  const profitMargin = useMemo(() => {
+    return pricingSettings.find(s => s.setting_key === 'profit_margin')?.setting_value || 40;
+  }, [pricingSettings]);
+
   const calculatedPrice = useMemo(() => {
     if (pricingSettings.length === 0 || complexitySettings.length === 0) return null;
     return calculatePrice({
@@ -70,8 +74,9 @@ export default function Pricing() {
       customizationFee: calcCustomization,
       pricingSettings,
       complexitySettings,
+      profitMargin,
     });
-  }, [calcBasePrice, calcMaterial, calcColors, calcComplexity, calcCustomization, pricingSettings, complexitySettings]);
+  }, [calcBasePrice, calcMaterial, calcColors, calcComplexity, calcCustomization, pricingSettings, complexitySettings, profitMargin]);
 
   const getSetting = (key: string) => pricingSettings.find(s => s.setting_key === key)?.setting_value || 0;
 
@@ -232,7 +237,7 @@ export default function Pricing() {
                             <span>${calculatedPrice.totalCost.toFixed(2)}</span>
                           </div>
                           <p className="text-xs text-muted-foreground mt-2">
-                            Suggested price includes 40% profit margin
+                            Suggested price includes {profitMargin}% profit margin
                           </p>
                         </CollapsibleContent>
                       </Collapsible>
@@ -552,24 +557,28 @@ export default function Pricing() {
                 <CardDescription>Configure base fees and upcharges</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {pricingSettings.map(setting => (
-                  <div key={setting.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <div>
-                      <p className="font-medium">{setting.setting_key.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())}</p>
-                      <p className="text-sm text-muted-foreground">{setting.description}</p>
+                {pricingSettings.map(setting => {
+                  const isPercentage = setting.setting_key === 'profit_margin';
+                  return (
+                    <div key={setting.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div>
+                        <p className="font-medium">{setting.setting_key.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())}</p>
+                        <p className="text-sm text-muted-foreground">{setting.description}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {!isPercentage && <span>$</span>}
+                        <Input
+                          type="number"
+                          value={setting.setting_value}
+                          onChange={(e) => updatePricingSetting.mutate({ key: setting.setting_key, value: Number(e.target.value) })}
+                          className="w-24"
+                          step={isPercentage ? 1 : 0.5}
+                        />
+                        {isPercentage && <span>%</span>}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span>$</span>
-                      <Input
-                        type="number"
-                        value={setting.setting_value}
-                        onChange={(e) => updatePricingSetting.mutate({ key: setting.setting_key, value: Number(e.target.value) })}
-                        className="w-24"
-                        step={0.5}
-                      />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </CardContent>
             </Card>
           </TabsContent>

@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
-import { Calculator, ChevronDown, DollarSign, Info } from "lucide-react";
+import { Calculator, ChevronDown, DollarSign, Info, Clock } from "lucide-react";
 import { 
   useMaterials, 
   useComplexitySettings, 
@@ -35,6 +35,10 @@ export function ProductPricingPanel({
   const { data: pricingSettings } = usePricingSettings();
   const { data: customizationOptions } = useCustomizationOptions();
 
+  const profitMargin = useMemo(() => {
+    return pricingSettings?.find(s => s.setting_key === 'profit_margin')?.setting_value || 40;
+  }, [pricingSettings]);
+
   const pricing = useMemo(() => {
     if (!pricingSettings || !complexitySettings) return null;
 
@@ -50,18 +54,25 @@ export function ProductPricingPanel({
       customizationFee,
       pricingSettings,
       complexitySettings,
+      profitMargin,
     });
-  }, [basePrice, materialCategory, numColors, complexity, isCustomizable, pricingSettings, complexitySettings, customizationOptions]);
-
-  const materialInfo = useMemo(() => {
-    if (!materials) return null;
-    return materials.find(m => m.category === materialCategory);
-  }, [materials, materialCategory]);
+  }, [basePrice, materialCategory, numColors, complexity, isCustomizable, pricingSettings, complexitySettings, customizationOptions, profitMargin]);
 
   const complexityInfo = useMemo(() => {
     if (!complexitySettings) return null;
     return complexitySettings.find(c => c.tier === complexity);
   }, [complexitySettings, complexity]);
+
+  // Estimate print time in days based on complexity
+  const printTimeEstimate = useMemo(() => {
+    if (!complexityInfo) return null;
+    const minDays = complexityInfo.min_time_minutes ? Math.ceil(complexityInfo.min_time_minutes / 60 / 8) : 0; // 8hr work day
+    const maxDays = complexityInfo.max_time_minutes ? Math.ceil(complexityInfo.max_time_minutes / 60 / 8) : minDays + 1;
+    
+    if (complexity === 'simple') return '1-2 days';
+    if (complexity === 'medium') return '2-3 days';
+    return '3-5 days';
+  }, [complexityInfo, complexity]);
 
   if (!pricing) {
     return (
@@ -89,8 +100,19 @@ export function ProductPricingPanel({
         <div className="text-center p-4 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
           <p className="text-sm text-muted-foreground mb-1">Suggested Price</p>
           <p className="text-4xl font-bold text-primary">${pricing.suggestedPrice.toFixed(2)}</p>
-          <p className="text-xs text-muted-foreground mt-1">40% profit margin</p>
+          <p className="text-xs text-muted-foreground mt-1">{profitMargin}% profit margin</p>
         </div>
+
+        {/* Print Time Estimate */}
+        {printTimeEstimate && (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
+            <Clock className="w-4 h-4 text-muted-foreground" />
+            <div>
+              <p className="text-sm font-medium">Approx. Print Time</p>
+              <p className="text-xs text-muted-foreground">{printTimeEstimate}</p>
+            </div>
+          </div>
+        )}
 
         {/* Cost Breakdown */}
         <Collapsible>
@@ -117,7 +139,7 @@ export function ProductPricingPanel({
                 </span>
               </div>
               <div className="flex justify-between py-1.5 border-b border-border/50">
-                <span className="text-muted-foreground">AMS ({numColors} colors)</span>
+                <span className="text-muted-foreground">AMS ({numColors} color{numColors !== 1 ? 's' : ''})</span>
                 <span className={cn(pricing.amsFee > 0 ? "text-amber-600" : "")}>
                   +${pricing.amsFee.toFixed(2)}
                 </span>
