@@ -4,6 +4,7 @@ import { toast } from "@/hooks/use-toast";
 
 export interface Product {
   id: string;
+  product_number: string | null;
   title: string;
   description: string | null;
   price: number;
