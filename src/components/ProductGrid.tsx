@@ -1,8 +1,7 @@
 import { useState, useMemo } from "react";
 import { ProductCard } from "./ProductCard";
 import { CategoryFilter } from "./CategoryFilter";
-import { OrderModal } from "./OrderModal";
-import { useProducts, Product } from "@/hooks/useProducts";
+import { useProducts } from "@/hooks/useProducts";
 import { Layers } from "lucide-react";
 
 const categories = [
@@ -13,9 +12,6 @@ const categories = [
 
 export function ProductGrid() {
   const [activeCategory, setActiveCategory] = useState("all");
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [orderModalOpen, setOrderModalOpen] = useState(false);
-
   const { data: products, isLoading } = useProducts();
 
   const filteredProducts = useMemo(() => {
@@ -24,11 +20,6 @@ export function ProductGrid() {
     if (activeCategory === "customizable") return products.filter(p => p.is_customizable);
     return products.filter(p => !p.is_customizable);
   }, [products, activeCategory]);
-
-  const handleOrder = (product: Product) => {
-    setSelectedProduct(product);
-    setOrderModalOpen(true);
-  };
 
   return (
     <section id="products" className="py-20 px-4 bg-background">
@@ -61,7 +52,7 @@ export function ProductGrid() {
         ) : filteredProducts.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} onOrder={handleOrder} />
+              <ProductCard key={product.id} product={product} />
             ))}
           </div>
         ) : (
@@ -70,8 +61,6 @@ export function ProductGrid() {
           </div>
         )}
       </div>
-
-      <OrderModal product={selectedProduct} open={orderModalOpen} onOpenChange={setOrderModalOpen} />
     </section>
   );
 }
