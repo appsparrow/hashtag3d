@@ -14,6 +14,140 @@ export type Database = {
   }
   public: {
     Tables: {
+      colors: {
+        Row: {
+          created_at: string
+          hex_color: string
+          id: string
+          is_active: boolean
+          material_id: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          hex_color?: string
+          id?: string
+          is_active?: boolean
+          material_id?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          hex_color?: string
+          id?: string
+          is_active?: boolean
+          material_id?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "colors_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      complexity_settings: {
+        Row: {
+          created_at: string
+          description: string | null
+          fee: number
+          help_text: string | null
+          id: string
+          max_time_minutes: number | null
+          min_time_minutes: number | null
+          tier: Database["public"]["Enums"]["complexity_tier"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          fee?: number
+          help_text?: string | null
+          id?: string
+          max_time_minutes?: number | null
+          min_time_minutes?: number | null
+          tier: Database["public"]["Enums"]["complexity_tier"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          fee?: number
+          help_text?: string | null
+          id?: string
+          max_time_minutes?: number | null
+          min_time_minutes?: number | null
+          tier?: Database["public"]["Enums"]["complexity_tier"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      customization_options: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          max_fee: number
+          min_fee: number
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          max_fee?: number
+          min_fee?: number
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          max_fee?: number
+          min_fee?: number
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      finish_options: {
+        Row: {
+          created_at: string
+          fee: number
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          fee?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          fee?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       local_settings: {
         Row: {
           created_at: string
@@ -34,6 +168,39 @@ export type Database = {
           id?: string
           setting_key?: string
           setting_value?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      materials: {
+        Row: {
+          category: Database["public"]["Enums"]["material_category"]
+          cost_per_gram: number
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          upcharge: number
+          updated_at: string
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["material_category"]
+          cost_per_gram?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          upcharge?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["material_category"]
+          cost_per_gram?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          upcharge?: number
           updated_at?: string
         }
         Relationships: []
@@ -114,6 +281,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pricing_settings: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          setting_key: string
+          setting_value: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_value?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_value?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       products: {
         Row: {
@@ -235,6 +429,8 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      complexity_tier: "simple" | "medium" | "complex"
+      material_category: "standard" | "premium" | "ultra"
       order_status: "pending" | "in_progress" | "completed" | "cancelled"
     }
     CompositeTypes: {
@@ -364,6 +560,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      complexity_tier: ["simple", "medium", "complex"],
+      material_category: ["standard", "premium", "ultra"],
       order_status: ["pending", "in_progress", "completed", "cancelled"],
     },
   },

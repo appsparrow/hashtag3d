@@ -10,7 +10,8 @@ import {
   Home,
   Plus,
   LayoutDashboard,
-  Settings
+  Settings,
+  Calculator
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
@@ -24,6 +25,7 @@ const navItems = [
   { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/products/new", label: "Add Product", icon: Plus },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
+  { href: "/admin/pricing", label: "Pricing", icon: Calculator },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
