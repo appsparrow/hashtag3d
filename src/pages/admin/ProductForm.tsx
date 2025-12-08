@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { useProduct, useCreateProduct, useUpdateProduct, CreateProductData } from "@/hooks/useProducts";
+import { useProduct, useCreateProduct, useUpdateProduct } from "@/hooks/useProducts";
 import { ProductPricingPanel } from "@/components/admin/ProductPricingPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,26 +9,41 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Upload, X, Video, Image as ImageIcon, Palette } from "lucide-react";
+import { ArrowLeft, Upload, X, Video, Image as ImageIcon, Palette, Package, Ruler } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useColors, useMaterials, MaterialCategory, ComplexityTier } from "@/hooks/usePricing";
+import { useColors, usePricingSettings } from "@/hooks/usePricing";
 
-const SIZE_OPTIONS = ["Small", "Medium", "Large", "Custom"];
-const INFILL_OPTIONS = ["20%", "50%", "75%", "100%"];
-const COMPLEXITY_OPTIONS: { value: ComplexityTier; label: string }[] = [
-  { value: "simple", label: "Simple - No supports, under 60 min" },
-  { value: "medium", label: "Medium - Light supports, 60-120 min" },
-  { value: "complex", label: "Complex - Heavy supports, over 120 min" },
+const MATERIAL_CATEGORIES = [
+  { value: "standard", label: "Standard", description: "Basic PLA materials" },
+  { value: "premium", label: "Premium", description: "Higher quality filaments" },
+  { value: "ultra", label: "Ultra Premium", description: "Specialty materials" },
 ];
 
-interface ExtendedProductData extends CreateProductData {
-  material_category?: MaterialCategory;
-  complexity?: ComplexityTier;
-  num_colors?: number;
+const SIZE_OPTIONS = [
+  { value: "small", label: "Small" },
+  { value: "medium", label: "Medium" },
+  { value: "large", label: "Large" },
+];
+
+interface ProductFormData {
+  title: string;
+  description: string;
+  price: number;
+  is_customizable: boolean;
+  category: string;
+  colors: string[];
+  allowed_materials: string[];
+  allowed_sizes: string[];
+  infill_options: string[];
+  personalization_options: string;
+  images: string[];
+  video_url: string;
+  is_active: boolean;
+  num_colors: number;
 }
 
 export default function ProductForm() {
@@ -38,30 +53,45 @@ export default function ProductForm() {
   
   const { data: existingProduct, isLoading: productLoading } = useProduct(id ?? "");
   const { data: dbColors } = useColors();
-  const { data: dbMaterials } = useMaterials();
+  const { data: pricingSettings } = usePricingSettings();
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
 
-  const [formData, setFormData] = useState<ExtendedProductData>({
+  const [formData, setFormData] = useState<ProductFormData>({
     title: "",
     description: "",
     price: 0,
     is_customizable: false,
-    category: "standard",
+    category: "general",
     colors: [],
-    materials: [],
-    sizes: [],
+    allowed_materials: ["standard"],
+    allowed_sizes: ["small", "medium", "large"],
     infill_options: [],
     personalization_options: "",
     images: [],
     video_url: "",
     is_active: true,
-    material_category: "standard",
-    complexity: "simple",
     num_colors: 1,
   });
 
   const [uploading, setUploading] = useState(false);
+
+  // Get upcharges from pricing settings
+  const getUpcharge = (key: string) => {
+    return pricingSettings?.find(s => s.setting_key === key)?.setting_value || 0;
+  };
+
+  const materialUpcharges = {
+    standard: 0,
+    premium: getUpcharge('material_premium_upcharge'),
+    ultra: getUpcharge('material_ultra_upcharge'),
+  };
+
+  const sizeUpcharges = {
+    small: getUpcharge('size_small_upcharge'),
+    medium: getUpcharge('size_medium_upcharge'),
+    large: getUpcharge('size_large_upcharge'),
+  };
 
   // Group colors by material category
   const colorsByCategory = dbColors?.reduce((acc, color) => {
@@ -80,15 +110,14 @@ export default function ProductForm() {
         is_customizable: existingProduct.is_customizable,
         category: existingProduct.category,
         colors: existingProduct.colors ?? [],
-        materials: existingProduct.materials ?? [],
-        sizes: existingProduct.sizes ?? [],
+        allowed_materials: existingProduct.allowed_materials ?? ["standard"],
+        allowed_sizes: existingProduct.allowed_sizes ?? ["small", "medium", "large"],
         infill_options: existingProduct.infill_options ?? [],
         personalization_options: existingProduct.personalization_options ?? "",
         images: existingProduct.images ?? [],
         video_url: existingProduct.video_url ?? "",
         is_active: existingProduct.is_active,
-        material_category: (existingProduct.category as MaterialCategory) || "standard",
-        complexity: "simple",
+        num_colors: 1,
       });
     }
   }, [existingProduct]);
@@ -143,20 +172,30 @@ export default function ProductForm() {
     setFormData({ ...formData, colors: updated });
   };
 
-  const toggleMaterial = (materialName: string) => {
-    const current = formData.materials ?? [];
-    const updated = current.includes(materialName)
-      ? current.filter(m => m !== materialName)
-      : [...current, materialName];
-    setFormData({ ...formData, materials: updated });
+  const toggleAllowedMaterial = (category: string) => {
+    const current = formData.allowed_materials ?? [];
+    const updated = current.includes(category)
+      ? current.filter(m => m !== category)
+      : [...current, category];
+    // Ensure at least one is selected
+    if (updated.length === 0) {
+      toast({ title: "At least one material category required", variant: "destructive" });
+      return;
+    }
+    setFormData({ ...formData, allowed_materials: updated });
   };
 
-  const toggleOption = (field: "sizes" | "infill_options", value: string) => {
-    const current = formData[field] ?? [];
-    const updated = current.includes(value)
-      ? current.filter((v) => v !== value)
-      : [...current, value];
-    setFormData({ ...formData, [field]: updated });
+  const toggleAllowedSize = (size: string) => {
+    const current = formData.allowed_sizes ?? [];
+    const updated = current.includes(size)
+      ? current.filter(s => s !== size)
+      : [...current, size];
+    // Ensure at least one is selected
+    if (updated.length === 0) {
+      toast({ title: "At least one size required", variant: "destructive" });
+      return;
+    }
+    setFormData({ ...formData, allowed_sizes: updated });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -167,9 +206,20 @@ export default function ProductForm() {
       return;
     }
 
-    const submitData: CreateProductData = {
-      ...formData,
-      category: formData.material_category || "standard",
+    const submitData = {
+      title: formData.title,
+      description: formData.description,
+      price: formData.price,
+      is_customizable: formData.is_customizable,
+      category: formData.category,
+      colors: formData.colors,
+      allowed_materials: formData.allowed_materials,
+      allowed_sizes: formData.allowed_sizes,
+      infill_options: formData.infill_options,
+      personalization_options: formData.personalization_options,
+      images: formData.images,
+      video_url: formData.video_url,
+      is_active: formData.is_active,
     };
 
     if (isEditing && id) {
@@ -254,58 +304,20 @@ export default function ProductForm() {
                       onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
                       required
                     />
-                    <p className="text-xs text-muted-foreground">Enter cost price. Suggested price will be calculated.</p>
+                    <p className="text-xs text-muted-foreground">Starting price. Customer selections add to this.</p>
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Material Category</Label>
-                    <Select
-                      value={formData.material_category}
-                      onValueChange={(value: MaterialCategory) => setFormData({ ...formData, material_category: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="standard">Standard</SelectItem>
-                        <SelectItem value="premium">Premium (+$2-4)</SelectItem>
-                        <SelectItem value="ultra">Ultra Premium (+$3-8)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Complexity</Label>
-                    <Select
-                      value={formData.complexity}
-                      onValueChange={(value: ComplexityTier) => setFormData({ ...formData, complexity: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {COMPLEXITY_OPTIONS.map(opt => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="num_colors">Number of Colors Used</Label>
+                    <Label htmlFor="num_colors">How Many Colors Can Customer Pick?</Label>
                     <Input
                       id="num_colors"
                       type="number"
                       min="1"
                       max="8"
-                      value={formData.num_colors || 1}
+                      value={formData.num_colors}
                       onChange={(e) => setFormData({ ...formData, num_colors: parseInt(e.target.value) || 1 })}
                     />
-                    <p className="text-xs text-muted-foreground">How many colors for AMS pricing. Customer picks which ones.</p>
+                    <p className="text-xs text-muted-foreground">Multiple colors add AMS fees.</p>
                   </div>
                 </div>
 
@@ -318,6 +330,95 @@ export default function ProductForm() {
                     checked={formData.is_active}
                     onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
                   />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Allowed Materials */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="w-5 h-5" />
+                  Allowed Material Types
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Which material categories can customers choose for this product?
+                </p>
+                <div className="grid gap-3">
+                  {MATERIAL_CATEGORIES.map((category) => (
+                    <div
+                      key={category.value}
+                      className={`flex items-center justify-between p-4 rounded-lg border transition-colors ${
+                        formData.allowed_materials.includes(category.value)
+                          ? "border-primary bg-primary/5"
+                          : "border-border"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          id={`material-${category.value}`}
+                          checked={formData.allowed_materials.includes(category.value)}
+                          onCheckedChange={() => toggleAllowedMaterial(category.value)}
+                        />
+                        <div>
+                          <Label htmlFor={`material-${category.value}`} className="font-medium cursor-pointer">
+                            {category.label}
+                          </Label>
+                          <p className="text-xs text-muted-foreground">{category.description}</p>
+                        </div>
+                      </div>
+                      {materialUpcharges[category.value as keyof typeof materialUpcharges] > 0 && (
+                        <Badge variant="secondary">
+                          +${materialUpcharges[category.value as keyof typeof materialUpcharges].toFixed(2)}
+                        </Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Allowed Sizes */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Ruler className="w-5 h-5" />
+                  Allowed Sizes
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Which sizes are available for this product?
+                </p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {SIZE_OPTIONS.map((size) => (
+                    <div
+                      key={size.value}
+                      className={`flex items-center justify-between p-4 rounded-lg border transition-colors ${
+                        formData.allowed_sizes.includes(size.value)
+                          ? "border-primary bg-primary/5"
+                          : "border-border"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          id={`size-${size.value}`}
+                          checked={formData.allowed_sizes.includes(size.value)}
+                          onCheckedChange={() => toggleAllowedSize(size.value)}
+                        />
+                        <Label htmlFor={`size-${size.value}`} className="font-medium cursor-pointer">
+                          {size.label}
+                        </Label>
+                      </div>
+                      {sizeUpcharges[size.value as keyof typeof sizeUpcharges] > 0 && (
+                        <Badge variant="secondary">
+                          +${sizeUpcharges[size.value as keyof typeof sizeUpcharges].toFixed(2)}
+                        </Badge>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -392,11 +493,20 @@ export default function ProductForm() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Select colors customers can choose from. Customer will pick {formData.num_colors || 1} color{(formData.num_colors || 1) !== 1 ? 's' : ''}.
+                  Select which colors customers can choose from. Customer will pick {formData.num_colors} color{formData.num_colors !== 1 ? 's' : ''}.
+                  Premium/Ultra colors add upcharges.
                 </p>
                 {Object.entries(colorsByCategory).map(([category, colors]) => (
                   <div key={category} className="space-y-2">
-                    <Label className="capitalize text-muted-foreground">{category} Colors</Label>
+                    <div className="flex items-center gap-2">
+                      <Label className="capitalize text-muted-foreground">{category} Colors</Label>
+                      {category === 'premium' && (
+                        <Badge variant="outline" className="text-xs">+${getUpcharge('color_premium_upcharge').toFixed(2)}</Badge>
+                      )}
+                      {category === 'ultra' && (
+                        <Badge variant="outline" className="text-xs">+${getUpcharge('color_ultra_upcharge').toFixed(2)}</Badge>
+                      )}
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       {colors?.map((color) => (
                         <button
@@ -429,85 +539,7 @@ export default function ProductForm() {
               </CardContent>
             </Card>
 
-            {/* Materials from Database */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Materials</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {(['standard', 'premium', 'ultra'] as const).map(category => {
-                  const categoryMaterials = dbMaterials?.filter(m => m.category === category) || [];
-                  if (categoryMaterials.length === 0) return null;
-                  return (
-                    <div key={category} className="space-y-2">
-                      <Label className="capitalize text-muted-foreground">{category}</Label>
-                      <div className="flex flex-wrap gap-2">
-                        {categoryMaterials.map((material) => (
-                          <Button
-                            key={material.id}
-                            type="button"
-                            variant={formData.materials?.includes(material.name) ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => toggleMaterial(material.name)}
-                          >
-                            {material.name}
-                            {material.upcharge > 0 && (
-                              <Badge variant="secondary" className="ml-1 text-xs">
-                                +${material.upcharge}
-                              </Badge>
-                            )}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
-
-            {/* Sizes & Infill */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Size & Infill Options</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-3">
-                  <Label>Sizes</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {SIZE_OPTIONS.map((size) => (
-                      <Button
-                        key={size}
-                        type="button"
-                        variant={formData.sizes?.includes(size) ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => toggleOption("sizes", size)}
-                      >
-                        {size}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <Label>Infill Options</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {INFILL_OPTIONS.map((infill) => (
-                      <Button
-                        key={infill}
-                        type="button"
-                        variant={formData.infill_options?.includes(infill) ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => toggleOption("infill_options", infill)}
-                      >
-                        {infill}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Customization */}
+            {/* Personalization */}
             <Card>
               <CardHeader>
                 <CardTitle>Personalization</CardTitle>
@@ -516,7 +548,7 @@ export default function ProductForm() {
                 <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
                   <div className="space-y-1">
                     <Label>Customizable Product</Label>
-                    <p className="text-sm text-muted-foreground">Allow customers to add personalization</p>
+                    <p className="text-sm text-muted-foreground">Allow customers to add personalization (+${getUpcharge('customization_fee').toFixed(2)})</p>
                   </div>
                   <Switch
                     checked={formData.is_customizable}
@@ -559,9 +591,9 @@ export default function ProductForm() {
         <div className="hidden lg:block w-80">
           <ProductPricingPanel
             basePrice={formData.price}
-            materialCategory={formData.material_category || "standard"}
-            numColors={formData.num_colors || 1}
-            complexity={formData.complexity || "simple"}
+            allowedMaterials={formData.allowed_materials}
+            allowedSizes={formData.allowed_sizes}
+            numColors={formData.num_colors}
             isCustomizable={formData.is_customizable}
           />
         </div>

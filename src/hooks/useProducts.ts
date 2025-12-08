@@ -19,6 +19,8 @@ export interface Product {
   video_url: string | null;
   is_active: boolean;
   likes_count: number;
+  allowed_materials: string[] | null;
+  allowed_sizes: string[] | null;
   created_at: string;
   updated_at: string;
 }
@@ -37,6 +39,8 @@ export interface CreateProductData {
   images?: string[];
   video_url?: string;
   is_active?: boolean;
+  allowed_materials?: string[];
+  allowed_sizes?: string[];
 }
 
 export function useProducts(includeInactive = false) {
