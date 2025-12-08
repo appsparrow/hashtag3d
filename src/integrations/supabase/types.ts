@@ -311,6 +311,8 @@ export type Database = {
       }
       products: {
         Row: {
+          allowed_materials: string[] | null
+          allowed_sizes: string[] | null
           category: string
           colors: string[] | null
           created_at: string
@@ -331,6 +333,8 @@ export type Database = {
           video_url: string | null
         }
         Insert: {
+          allowed_materials?: string[] | null
+          allowed_sizes?: string[] | null
           category?: string
           colors?: string[] | null
           created_at?: string
@@ -351,6 +355,8 @@ export type Database = {
           video_url?: string | null
         }
         Update: {
+          allowed_materials?: string[] | null
+          allowed_sizes?: string[] | null
           category?: string
           colors?: string[] | null
           created_at?: string

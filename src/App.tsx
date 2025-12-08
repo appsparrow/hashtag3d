@@ -12,6 +12,7 @@ import ProductForm from "./pages/admin/ProductForm";
 import Orders from "./pages/admin/Orders";
 import Settings from "./pages/admin/Settings";
 import Pricing from "./pages/admin/Pricing";
+import Configuration from "./pages/admin/Configuration";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/admin/orders" element={<Orders />} />
             <Route path="/admin/settings" element={<Settings />} />
             <Route path="/admin/pricing" element={<Pricing />} />
+            <Route path="/admin/configuration" element={<Configuration />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
