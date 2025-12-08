@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Product } from "@/hooks/useProducts";
 import { useCreateOrder } from "@/hooks/useOrders";
-import { useDeliveryAreas } from "@/hooks/useLocalSettings";
+import { useDeliveryAreas, useLocalSetting } from "@/hooks/useLocalSettings";
+import { usePricingSettings, useColors, MaterialCategory } from "@/hooks/usePricing";
 import { toast } from "@/hooks/use-toast";
 import { Send, Sparkles, CheckCircle2, Copy } from "lucide-react";
 
@@ -24,10 +25,9 @@ export function OrderModal({ product, open, onOpenChange }: OrderModalProps) {
     phone: "",
     address: "",
     deliveryLocation: "",
-    color: "",
-    material: "",
-    size: "",
-    infill: "",
+    colors: [] as string[],
+    material: "standard",
+    size: "small",
     customization: "",
     notes: "",
   });
@@ -35,13 +35,98 @@ export function OrderModal({ product, open, onOpenChange }: OrderModalProps) {
   
   const createOrder = useCreateOrder();
   const { data: deliveryAreas } = useDeliveryAreas();
+  const { data: pricingSettings = [] } = usePricingSettings();
+  const { data: dbColors = [] } = useColors();
+  const { data: currencySymbolSetting } = useLocalSetting("business_currency_symbol");
+  
+  const currencySymbol = (currencySymbolSetting?.setting_value as string) || "$";
   const shippingCost = 5.00;
-  const productPrice = product ? Number(product.price) : 0;
-  const total = productPrice + shippingCost;
+
+  // Reset colors when product changes
+  useEffect(() => {
+    if (product) {
+      const numColors = (product as any).num_colors || 1;
+      setFormData(prev => ({ ...prev, colors: Array(numColors).fill("") }));
+    }
+  }, [product]);
+
+  const getSetting = (key: string) => pricingSettings.find(s => s.setting_key === key)?.setting_value || 0;
+
+  // Get available colors for this product, grouped by category
+  const availableColors = useMemo(() => {
+    if (!product?.colors || !dbColors.length) return { standard: [], premium: [], ultra: [] };
+    
+    return dbColors
+      .filter(c => product.colors?.includes(c.name))
+      .reduce((acc, color) => {
+        const category = (color.material?.category || "standard") as MaterialCategory;
+        acc[category].push(color);
+        return acc;
+      }, { standard: [], premium: [], ultra: [] } as Record<MaterialCategory, typeof dbColors>);
+  }, [product?.colors, dbColors]);
+
+  // Calculate dynamic pricing based on customer selections
+  const pricing = useMemo(() => {
+    if (!product || pricingSettings.length === 0) return null;
+
+    const basePrice = Number(product.price);
+    
+    // Material upcharge
+    const materialUpcharge = formData.material === "standard" 
+      ? 0 
+      : formData.material === "premium"
+        ? getSetting("material_premium_upcharge")
+        : getSetting("material_ultra_upcharge");
+    
+    // Size upcharge
+    const sizeUpcharge = getSetting(`size_${formData.size}_upcharge`);
+    
+    // Color category upcharges (check each selected color)
+    let colorUpcharge = 0;
+    formData.colors.forEach(colorName => {
+      if (!colorName) return;
+      const color = dbColors.find(c => c.name === colorName);
+      if (color?.material?.category === "premium") {
+        colorUpcharge += getSetting("color_premium_upcharge");
+      } else if (color?.material?.category === "ultra") {
+        colorUpcharge += getSetting("color_ultra_upcharge");
+      }
+    });
+    
+    // AMS fee for multiple colors
+    const numColors = formData.colors.filter(c => c).length;
+    const amsFee = numColors > 1 
+      ? getSetting("ams_base_fee") + (numColors - 1) * getSetting("ams_per_color_fee")
+      : 0;
+    
+    // Customization fee (if product is customizable and has input)
+    const customizationFee = product.is_customizable && formData.customization ? 2 : 0;
+    
+    const subtotal = basePrice + materialUpcharge + sizeUpcharge + colorUpcharge + amsFee + customizationFee;
+    const total = subtotal + shippingCost;
+
+    return {
+      basePrice,
+      materialUpcharge,
+      sizeUpcharge,
+      colorUpcharge,
+      amsFee,
+      customizationFee,
+      subtotal,
+      shippingCost,
+      total,
+    };
+  }, [product, formData, pricingSettings, dbColors]);
+
+  const handleColorChange = (index: number, colorName: string) => {
+    const newColors = [...formData.colors];
+    newColors[index] = colorName;
+    setFormData({ ...formData, colors: newColors });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!product) return;
+    if (!product || !pricing) return;
 
     const result = await createOrder.mutateAsync({
       product_id: product.id,
@@ -51,12 +136,11 @@ export function OrderModal({ product, open, onOpenChange }: OrderModalProps) {
       delivery_location: formData.deliveryLocation || deliveryAreas?.[0] || "Alpharetta, GA",
       delivery_address: formData.address || undefined,
       shipping_cost: shippingCost,
-      product_price: productPrice,
-      total_amount: total,
-      selected_color: formData.color || undefined,
+      product_price: pricing.subtotal,
+      total_amount: pricing.total,
+      selected_color: formData.colors.filter(c => c).join(", ") || undefined,
       selected_material: formData.material || undefined,
       selected_size: formData.size || undefined,
-      selected_infill: formData.infill || undefined,
       customization_details: formData.customization || undefined,
       notes: formData.notes || undefined,
     });
@@ -65,7 +149,7 @@ export function OrderModal({ product, open, onOpenChange }: OrderModalProps) {
   };
 
   const handleClose = () => {
-    setFormData({ name: "", email: "", phone: "", address: "", deliveryLocation: "", color: "", material: "", size: "", infill: "", customization: "", notes: "" });
+    setFormData({ name: "", email: "", phone: "", address: "", deliveryLocation: "", colors: [], material: "standard", size: "small", customization: "", notes: "" });
     setOrderNumber(null);
     onOpenChange(false);
   };
@@ -80,6 +164,9 @@ export function OrderModal({ product, open, onOpenChange }: OrderModalProps) {
   if (!product) return null;
 
   const imageUrl = product.images?.[0] || "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=400&fit=crop";
+  const numColorsAllowed = (product as any).num_colors || 1;
+  const allowedSizes = (product as any).allowed_sizes || ["small", "medium", "large"];
+  const allowedMaterials = (product as any).allowed_materials || ["standard"];
 
   // Success view
   if (orderNumber) {
@@ -111,9 +198,7 @@ export function OrderModal({ product, open, onOpenChange }: OrderModalProps) {
               </p>
             </div>
 
-            <Button onClick={handleClose} className="w-full">
-              Done
-            </Button>
+            <Button onClick={handleClose} className="w-full">Done</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -125,24 +210,26 @@ export function OrderModal({ product, open, onOpenChange }: OrderModalProps) {
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Order Request</DialogTitle>
-          <DialogDescription>Fill out this form and I'll contact you to complete your order.</DialogDescription>
+          <DialogDescription>Configure your order and I'll contact you to complete it.</DialogDescription>
         </DialogHeader>
 
         <div className="flex gap-4 p-4 rounded-lg bg-muted/50 border border-border">
           <img src={imageUrl} alt={product.title} className="w-20 h-20 rounded-lg object-cover" />
           <div className="flex-1 min-w-0">
             <h4 className="font-semibold truncate">{product.title}</h4>
-            <p className="text-lg font-bold text-primary">${productPrice.toFixed(2)}</p>
+            <p className="text-lg font-bold text-primary">
+              {pricing ? `${currencySymbol}${pricing.subtotal.toFixed(2)}` : `${currencySymbol}${Number(product.price).toFixed(2)}`}
+            </p>
             {product.is_customizable && (
               <p className="text-xs text-accent flex items-center gap-1 mt-1">
-                <Sparkles className="w-3 h-3" />
-                Customizable
+                <Sparkles className="w-3 h-3" />Customizable
               </p>
             )}
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Customer Info */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="name">Name *</Label>
@@ -175,22 +262,124 @@ export function OrderModal({ product, open, onOpenChange }: OrderModalProps) {
             <Input id="address" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} />
           </div>
 
-          {product.colors && product.colors.length > 0 && (
-            <div className="space-y-2">
-              <Label>Color</Label>
-              <Select value={formData.color} onValueChange={(v) => setFormData({ ...formData, color: v })}>
-                <SelectTrigger><SelectValue placeholder="Select color" /></SelectTrigger>
-                <SelectContent>
-                  {product.colors.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          {/* Product Options */}
+          <div className="space-y-4 pt-2 border-t">
+            <h4 className="font-medium text-sm">Product Options</h4>
+            
+            {/* Material Selection */}
+            {allowedMaterials.length > 1 && (
+              <div className="space-y-2">
+                <Label>Material Type</Label>
+                <Select value={formData.material} onValueChange={(v) => setFormData({ ...formData, material: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {allowedMaterials.includes("standard") && (
+                      <SelectItem value="standard">Standard</SelectItem>
+                    )}
+                    {allowedMaterials.includes("premium") && (
+                      <SelectItem value="premium">Premium (+{currencySymbol}{getSetting("material_premium_upcharge")})</SelectItem>
+                    )}
+                    {allowedMaterials.includes("ultra") && (
+                      <SelectItem value="ultra">Ultra Premium (+{currencySymbol}{getSetting("material_ultra_upcharge")})</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
+            {/* Size Selection */}
+            {allowedSizes.length > 0 && (
+              <div className="space-y-2">
+                <Label>Size</Label>
+                <Select value={formData.size} onValueChange={(v) => setFormData({ ...formData, size: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {allowedSizes.includes("small") && (
+                      <SelectItem value="small">Small {getSetting("size_small_upcharge") > 0 ? `(+${currencySymbol}${getSetting("size_small_upcharge")})` : ""}</SelectItem>
+                    )}
+                    {allowedSizes.includes("medium") && (
+                      <SelectItem value="medium">Medium (+{currencySymbol}{getSetting("size_medium_upcharge")})</SelectItem>
+                    )}
+                    {allowedSizes.includes("large") && (
+                      <SelectItem value="large">Large (+{currencySymbol}{getSetting("size_large_upcharge")})</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Color Selection */}
+            {product.colors && product.colors.length > 0 && (
+              <div className="space-y-2">
+                <Label>Colors ({numColorsAllowed} selection{numColorsAllowed > 1 ? "s" : ""})</Label>
+                <div className="space-y-2">
+                  {Array.from({ length: numColorsAllowed }).map((_, index) => (
+                    <Select 
+                      key={index} 
+                      value={formData.colors[index] || ""} 
+                      onValueChange={(v) => handleColorChange(index, v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={`Select color ${index + 1}`} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableColors.standard.length > 0 && (
+                          <>
+                            <div className="px-2 py-1 text-xs text-muted-foreground font-medium">Standard Colors</div>
+                            {availableColors.standard.map(c => (
+                              <SelectItem key={c.id} value={c.name}>
+                                <div className="flex items-center gap-2">
+                                  <span className="w-3 h-3 rounded-full border" style={{ backgroundColor: c.hex_color }} />
+                                  {c.name}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </>
+                        )}
+                        {availableColors.premium.length > 0 && (
+                          <>
+                            <div className="px-2 py-1 text-xs text-muted-foreground font-medium mt-1">Premium Colors (+{currencySymbol}{getSetting("color_premium_upcharge")})</div>
+                            {availableColors.premium.map(c => (
+                              <SelectItem key={c.id} value={c.name}>
+                                <div className="flex items-center gap-2">
+                                  <span className="w-3 h-3 rounded-full border" style={{ backgroundColor: c.hex_color }} />
+                                  {c.name}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </>
+                        )}
+                        {availableColors.ultra.length > 0 && (
+                          <>
+                            <div className="px-2 py-1 text-xs text-muted-foreground font-medium mt-1">Ultra Colors (+{currencySymbol}{getSetting("color_ultra_upcharge")})</div>
+                            {availableColors.ultra.map(c => (
+                              <SelectItem key={c.id} value={c.name}>
+                                <div className="flex items-center gap-2">
+                                  <span className="w-3 h-3 rounded-full border" style={{ backgroundColor: c.hex_color }} />
+                                  {c.name}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Customization */}
           {product.is_customizable && (
             <div className="space-y-2">
-              <Label htmlFor="customization">Customization Details</Label>
-              <Input id="customization" value={formData.customization} onChange={(e) => setFormData({ ...formData, customization: e.target.value })} placeholder={product.personalization_options || "Enter details..."} />
+              <Label htmlFor="customization">Customization Details (+{currencySymbol}2)</Label>
+              <Input 
+                id="customization" 
+                value={formData.customization} 
+                onChange={(e) => setFormData({ ...formData, customization: e.target.value })} 
+                placeholder={product.personalization_options || "Enter details..."} 
+              />
             </div>
           )}
 
@@ -199,11 +388,30 @@ export function OrderModal({ product, open, onOpenChange }: OrderModalProps) {
             <Textarea id="notes" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} rows={2} />
           </div>
 
-          <div className="p-3 rounded-lg bg-muted text-sm space-y-1">
-            <div className="flex justify-between"><span>Product</span><span>${productPrice.toFixed(2)}</span></div>
-            <div className="flex justify-between"><span>Shipping ({formData.deliveryLocation || deliveryAreas?.[0] || "Local"})</span><span>${shippingCost.toFixed(2)}</span></div>
-            <div className="flex justify-between font-bold border-t pt-1 mt-1"><span>Total</span><span>${total.toFixed(2)}</span></div>
-          </div>
+          {/* Pricing Summary */}
+          {pricing && (
+            <div className="p-3 rounded-lg bg-muted text-sm space-y-1">
+              <div className="flex justify-between"><span>Base Price</span><span>{currencySymbol}{pricing.basePrice.toFixed(2)}</span></div>
+              {pricing.materialUpcharge > 0 && (
+                <div className="flex justify-between text-muted-foreground"><span>Material Upgrade</span><span>+{currencySymbol}{pricing.materialUpcharge.toFixed(2)}</span></div>
+              )}
+              {pricing.sizeUpcharge > 0 && (
+                <div className="flex justify-between text-muted-foreground"><span>Size</span><span>+{currencySymbol}{pricing.sizeUpcharge.toFixed(2)}</span></div>
+              )}
+              {pricing.colorUpcharge > 0 && (
+                <div className="flex justify-between text-muted-foreground"><span>Premium Colors</span><span>+{currencySymbol}{pricing.colorUpcharge.toFixed(2)}</span></div>
+              )}
+              {pricing.amsFee > 0 && (
+                <div className="flex justify-between text-muted-foreground"><span>Multi-Color</span><span>+{currencySymbol}{pricing.amsFee.toFixed(2)}</span></div>
+              )}
+              {pricing.customizationFee > 0 && (
+                <div className="flex justify-between text-muted-foreground"><span>Customization</span><span>+{currencySymbol}{pricing.customizationFee.toFixed(2)}</span></div>
+              )}
+              <div className="flex justify-between border-t pt-1 mt-1"><span>Subtotal</span><span>{currencySymbol}{pricing.subtotal.toFixed(2)}</span></div>
+              <div className="flex justify-between"><span>Shipping</span><span>{currencySymbol}{pricing.shippingCost.toFixed(2)}</span></div>
+              <div className="flex justify-between font-bold border-t pt-1 mt-1"><span>Total</span><span>{currencySymbol}{pricing.total.toFixed(2)}</span></div>
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>

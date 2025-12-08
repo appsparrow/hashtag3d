@@ -11,7 +11,8 @@ import {
   Plus,
   LayoutDashboard,
   Settings,
-  Calculator
+  Calculator,
+  Building2
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
@@ -26,7 +27,8 @@ const navItems = [
   { href: "/admin/products/new", label: "Add Product", icon: Plus },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { href: "/admin/pricing", label: "Pricing", icon: Calculator },
-  { href: "/admin/settings", label: "Settings", icon: Settings },
+  { href: "/admin/configuration", label: "Configuration", icon: Settings },
+  { href: "/admin/settings", label: "Settings", icon: Building2 },
 ];
 
 export function AdminLayout({ children }: AdminLayoutProps) {
