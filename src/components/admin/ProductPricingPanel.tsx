@@ -1,80 +1,93 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
-import { Calculator, ChevronDown, DollarSign, Info, Clock } from "lucide-react";
-import { 
-  useMaterials, 
-  useComplexitySettings, 
-  usePricingSettings, 
-  useCustomizationOptions,
-  MaterialCategory,
-  ComplexityTier,
-  calculatePrice 
-} from "@/hooks/usePricing";
-import { cn } from "@/lib/utils";
+import { Calculator, DollarSign, TrendingUp, TrendingDown } from "lucide-react";
+import { usePricingSettings } from "@/hooks/usePricing";
 
 interface ProductPricingPanelProps {
   basePrice: number;
-  materialCategory: MaterialCategory;
+  allowedMaterials: string[];
+  allowedSizes: string[];
   numColors: number;
-  complexity: ComplexityTier;
   isCustomizable: boolean;
-  onPriceChange?: (suggestedPrice: number) => void;
 }
 
 export function ProductPricingPanel({
   basePrice,
-  materialCategory,
+  allowedMaterials,
+  allowedSizes,
   numColors,
-  complexity,
   isCustomizable,
 }: ProductPricingPanelProps) {
-  const { data: materials } = useMaterials();
-  const { data: complexitySettings } = useComplexitySettings();
   const { data: pricingSettings } = usePricingSettings();
-  const { data: customizationOptions } = useCustomizationOptions();
 
-  const profitMargin = useMemo(() => {
-    return pricingSettings?.find(s => s.setting_key === 'profit_margin')?.setting_value || 40;
-  }, [pricingSettings]);
+  const getUpcharge = (key: string) => {
+    return pricingSettings?.find(s => s.setting_key === key)?.setting_value || 0;
+  };
 
-  const pricing = useMemo(() => {
-    if (!pricingSettings || !complexitySettings) return null;
+  const priceRange = useMemo(() => {
+    if (!pricingSettings) return null;
 
-    const customizationFee = isCustomizable 
-      ? (customizationOptions?.find(c => c.name === 'Add Name/Text')?.min_fee || 2)
-      : 0;
+    // Material upcharges
+    const materialUpcharges = {
+      standard: 0,
+      premium: getUpcharge('material_premium_upcharge'),
+      ultra: getUpcharge('material_ultra_upcharge'),
+    };
 
-    return calculatePrice({
+    // Size upcharges
+    const sizeUpcharges = {
+      small: getUpcharge('size_small_upcharge'),
+      medium: getUpcharge('size_medium_upcharge'),
+      large: getUpcharge('size_large_upcharge'),
+    };
+
+    // Color category upcharges
+    const colorPremiumUpcharge = getUpcharge('color_premium_upcharge');
+    const colorUltraUpcharge = getUpcharge('color_ultra_upcharge');
+
+    // AMS fee for multiple colors
+    const amsFeePerColor = getUpcharge('ams_fee_per_color');
+    const amsFee = numColors > 1 ? (numColors - 1) * amsFeePerColor : 0;
+
+    // Customization fee
+    const customizationFee = isCustomizable ? getUpcharge('customization_fee') : 0;
+
+    // Calculate min price (smallest material + smallest size + standard colors)
+    const minMaterialUpcharge = Math.min(
+      ...allowedMaterials.map(m => materialUpcharges[m as keyof typeof materialUpcharges] || 0)
+    );
+    const minSizeUpcharge = Math.min(
+      ...allowedSizes.map(s => sizeUpcharges[s as keyof typeof sizeUpcharges] || 0)
+    );
+    const minPrice = basePrice + minMaterialUpcharge + minSizeUpcharge + amsFee;
+
+    // Calculate max price (largest material + largest size + ultra colors)
+    const maxMaterialUpcharge = Math.max(
+      ...allowedMaterials.map(m => materialUpcharges[m as keyof typeof materialUpcharges] || 0)
+    );
+    const maxSizeUpcharge = Math.max(
+      ...allowedSizes.map(s => sizeUpcharges[s as keyof typeof sizeUpcharges] || 0)
+    );
+    // Max color upcharge (assuming customer picks ultra colors for all selections)
+    const maxColorUpcharge = numColors * colorUltraUpcharge;
+    const maxPrice = basePrice + maxMaterialUpcharge + maxSizeUpcharge + amsFee + maxColorUpcharge + customizationFee;
+
+    return {
+      min: minPrice,
+      max: maxPrice,
       basePrice,
-      materialCategory,
-      numColors,
-      complexity,
+      amsFee,
       customizationFee,
-      pricingSettings,
-      complexitySettings,
-      profitMargin,
-    });
-  }, [basePrice, materialCategory, numColors, complexity, isCustomizable, pricingSettings, complexitySettings, customizationOptions, profitMargin]);
+      minMaterialUpcharge,
+      maxMaterialUpcharge,
+      minSizeUpcharge,
+      maxSizeUpcharge,
+      maxColorUpcharge,
+    };
+  }, [basePrice, allowedMaterials, allowedSizes, numColors, isCustomizable, pricingSettings]);
 
-  const complexityInfo = useMemo(() => {
-    if (!complexitySettings) return null;
-    return complexitySettings.find(c => c.tier === complexity);
-  }, [complexitySettings, complexity]);
-
-  // Estimate print time in days based on complexity
-  const printTimeEstimate = useMemo(() => {
-    if (!complexityInfo) return null;
-    const minDays = complexityInfo.min_time_minutes ? Math.ceil(complexityInfo.min_time_minutes / 60 / 8) : 0; // 8hr work day
-    const maxDays = complexityInfo.max_time_minutes ? Math.ceil(complexityInfo.max_time_minutes / 60 / 8) : minDays + 1;
-    
-    if (complexity === 'simple') return '1-2 days';
-    if (complexity === 'medium') return '2-3 days';
-    return '3-5 days';
-  }, [complexityInfo, complexity]);
-
-  if (!pricing) {
+  if (!priceRange) {
     return (
       <Card className="sticky top-4">
         <CardContent className="p-4">
@@ -87,104 +100,121 @@ export function ProductPricingPanel({
     );
   }
 
+  const hasRange = priceRange.min !== priceRange.max;
+
   return (
     <Card className="sticky top-4 border-primary/20 shadow-lg">
       <CardHeader className="pb-3 bg-primary/5">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Calculator className="w-5 h-5 text-primary" />
-          Pricing Calculator
+          Price Preview
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 pt-4">
-        {/* Suggested Price */}
+        {/* Price Range Display */}
         <div className="text-center p-4 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
-          <p className="text-sm text-muted-foreground mb-1">Suggested Price</p>
-          <p className="text-4xl font-bold text-primary">${pricing.suggestedPrice.toFixed(2)}</p>
-          <p className="text-xs text-muted-foreground mt-1">{profitMargin}% profit margin</p>
+          <p className="text-sm text-muted-foreground mb-1">Customer Price Range</p>
+          {hasRange ? (
+            <div className="space-y-1">
+              <p className="text-3xl font-bold text-primary">
+                ${priceRange.min.toFixed(2)} - ${priceRange.max.toFixed(2)}
+              </p>
+              <p className="text-xs text-muted-foreground">Based on customer selections</p>
+            </div>
+          ) : (
+            <p className="text-3xl font-bold text-primary">${priceRange.min.toFixed(2)}</p>
+          )}
         </div>
 
-        {/* Print Time Estimate */}
-        {printTimeEstimate && (
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
-            <Clock className="w-4 h-4 text-muted-foreground" />
-            <div>
-              <p className="text-sm font-medium">Approx. Print Time</p>
-              <p className="text-xs text-muted-foreground">{printTimeEstimate}</p>
+        {/* Min/Max breakdown */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900">
+            <div className="flex items-center gap-1 mb-1">
+              <TrendingDown className="w-4 h-4 text-green-600" />
+              <span className="text-xs font-medium text-green-700 dark:text-green-400">Starting At</span>
             </div>
+            <p className="text-xl font-bold text-green-700 dark:text-green-400">
+              ${priceRange.min.toFixed(2)}
+            </p>
+            <p className="text-xs text-green-600/70 dark:text-green-500/70">
+              Standard, smallest
+            </p>
           </div>
-        )}
+          <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900">
+            <div className="flex items-center gap-1 mb-1">
+              <TrendingUp className="w-4 h-4 text-amber-600" />
+              <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Up To</span>
+            </div>
+            <p className="text-xl font-bold text-amber-700 dark:text-amber-400">
+              ${priceRange.max.toFixed(2)}
+            </p>
+            <p className="text-xs text-amber-600/70 dark:text-amber-500/70">
+              Premium, largest
+            </p>
+          </div>
+        </div>
 
-        {/* Cost Breakdown */}
-        <Collapsible>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-            <div className="flex items-center gap-2">
-              <DollarSign className="w-4 h-4" />
-              <span className="font-medium">Cost Price: ${pricing.totalCost.toFixed(2)}</span>
+        {/* Breakdown Details */}
+        <div className="space-y-2 text-sm border-t pt-4">
+          <div className="flex justify-between py-1">
+            <span className="text-muted-foreground">Base Price</span>
+            <span className="font-medium">${priceRange.basePrice.toFixed(2)}</span>
+          </div>
+          
+          {priceRange.maxMaterialUpcharge > 0 && (
+            <div className="flex justify-between py-1">
+              <span className="text-muted-foreground">Material Upcharge</span>
+              <span className="text-amber-600">
+                +${priceRange.minMaterialUpcharge.toFixed(2)} to +${priceRange.maxMaterialUpcharge.toFixed(2)}
+              </span>
             </div>
-            <ChevronDown className="w-4 h-4" />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="pt-3">
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between py-1.5 border-b border-border/50">
-                <span className="text-muted-foreground">Base Price</span>
-                <span>${pricing.basePrice.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-border/50">
-                <div className="flex items-center gap-1">
-                  <span className="text-muted-foreground">Material ({materialCategory})</span>
-                  <Badge variant="outline" className="text-xs capitalize">{materialCategory}</Badge>
-                </div>
-                <span className={cn(pricing.materialUpcharge > 0 ? "text-amber-600" : "")}>
-                  +${pricing.materialUpcharge.toFixed(2)}
-                </span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-border/50">
-                <span className="text-muted-foreground">AMS ({numColors} color{numColors !== 1 ? 's' : ''})</span>
-                <span className={cn(pricing.amsFee > 0 ? "text-amber-600" : "")}>
-                  +${pricing.amsFee.toFixed(2)}
-                </span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-border/50">
-                <div className="flex items-center gap-1">
-                  <span className="text-muted-foreground">Complexity</span>
-                  <Badge variant="outline" className="text-xs capitalize">{complexity}</Badge>
-                </div>
-                <span className={cn(pricing.complexityFee > 0 ? "text-amber-600" : "")}>
-                  +${pricing.complexityFee.toFixed(2)}
-                </span>
-              </div>
-              {pricing.customizationFee > 0 && (
-                <div className="flex justify-between py-1.5 border-b border-border/50">
-                  <span className="text-muted-foreground">Customization</span>
-                  <span className="text-amber-600">+${pricing.customizationFee.toFixed(2)}</span>
-                </div>
-              )}
-              <div className="flex justify-between py-2 font-semibold">
-                <span>Total Cost</span>
-                <span>${pricing.totalCost.toFixed(2)}</span>
-              </div>
+          )}
+          
+          {priceRange.maxSizeUpcharge > 0 && (
+            <div className="flex justify-between py-1">
+              <span className="text-muted-foreground">Size Upcharge</span>
+              <span className="text-amber-600">
+                +${priceRange.minSizeUpcharge.toFixed(2)} to +${priceRange.maxSizeUpcharge.toFixed(2)}
+              </span>
             </div>
-          </CollapsibleContent>
-        </Collapsible>
+          )}
+          
+          {priceRange.amsFee > 0 && (
+            <div className="flex justify-between py-1">
+              <span className="text-muted-foreground">AMS Fee ({numColors} colors)</span>
+              <span className="text-amber-600">+${priceRange.amsFee.toFixed(2)}</span>
+            </div>
+          )}
+          
+          {priceRange.maxColorUpcharge > 0 && (
+            <div className="flex justify-between py-1">
+              <span className="text-muted-foreground">Premium Color Upcharge</span>
+              <span className="text-amber-600">up to +${priceRange.maxColorUpcharge.toFixed(2)}</span>
+            </div>
+          )}
+          
+          {priceRange.customizationFee > 0 && (
+            <div className="flex justify-between py-1">
+              <span className="text-muted-foreground">Customization Fee</span>
+              <span className="text-amber-600">+${priceRange.customizationFee.toFixed(2)}</span>
+            </div>
+          )}
+        </div>
 
         {/* Configuration Summary */}
-        <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Configuration</p>
+        <div className="space-y-2 border-t pt-4">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Allowed Options</p>
           <div className="flex flex-wrap gap-1.5">
-            <Badge variant="secondary" className="capitalize">{materialCategory}</Badge>
-            <Badge variant="secondary">{numColors} color{numColors !== 1 ? 's' : ''}</Badge>
-            <Badge variant="secondary" className="capitalize">{complexity}</Badge>
+            {allowedMaterials.map(m => (
+              <Badge key={m} variant="secondary" className="capitalize">{m}</Badge>
+            ))}
+            {allowedSizes.map(s => (
+              <Badge key={s} variant="outline" className="capitalize">{s}</Badge>
+            ))}
+            <Badge variant="outline">{numColors} color{numColors !== 1 ? 's' : ''}</Badge>
             {isCustomizable && <Badge variant="secondary">Customizable</Badge>}
           </div>
         </div>
-
-        {/* Help Text */}
-        {complexityInfo?.help_text && (
-          <div className="flex gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 text-sm">
-            <Info className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
-            <p className="text-blue-700 dark:text-blue-300">{complexityInfo.help_text}</p>
-          </div>
-        )}
       </CardContent>
     </Card>
   );
