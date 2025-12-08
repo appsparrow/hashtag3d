@@ -462,8 +462,9 @@ export function calculatePrice(params: {
   customizationFee: number;
   pricingSettings: PricingSetting[];
   complexitySettings: ComplexitySetting[];
+  profitMargin?: number;
 }) {
-  const { basePrice, materialCategory, numColors, complexity, customizationFee, pricingSettings, complexitySettings } = params;
+  const { basePrice, materialCategory, numColors, complexity, customizationFee, pricingSettings, complexitySettings, profitMargin = 40 } = params;
   
   const getSetting = (key: string) => pricingSettings.find(s => s.setting_key === key)?.setting_value || 0;
   const getComplexityFee = (tier: ComplexityTier) => complexitySettings.find(c => c.tier === tier)?.fee || 0;
@@ -481,6 +482,7 @@ export function calculatePrice(params: {
   const complexityFee = getComplexityFee(complexity);
   
   const totalCost = basePrice + materialUpcharge + amsFee + complexityFee + customizationFee;
+  const marginMultiplier = 1 + (profitMargin / 100);
   
   return {
     basePrice,
@@ -489,6 +491,7 @@ export function calculatePrice(params: {
     complexityFee,
     customizationFee,
     totalCost,
-    suggestedPrice: Math.ceil(totalCost * 1.4), // 40% margin
+    suggestedPrice: Math.ceil(totalCost * marginMultiplier),
+    profitMargin,
   };
 }
