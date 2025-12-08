@@ -324,6 +324,7 @@ export type Database = {
           materials: string[] | null
           personalization_options: string | null
           price: number
+          product_number: string | null
           sizes: string[] | null
           title: string
           updated_at: string
@@ -343,6 +344,7 @@ export type Database = {
           materials?: string[] | null
           personalization_options?: string | null
           price?: number
+          product_number?: string | null
           sizes?: string[] | null
           title: string
           updated_at?: string
@@ -362,6 +364,7 @@ export type Database = {
           materials?: string[] | null
           personalization_options?: string | null
           price?: number
+          product_number?: string | null
           sizes?: string[] | null
           title?: string
           updated_at?: string
