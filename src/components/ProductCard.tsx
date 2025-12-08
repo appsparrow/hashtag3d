@@ -1,16 +1,18 @@
 import { useState } from "react";
-import { Heart, ShoppingBag, Sparkles } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Heart, Eye, Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Product } from "@/hooks/useProducts";
 import { supabase } from "@/integrations/supabase/client";
 import defaultProductImage from "@/assets/default-product.jpg";
+
 interface ProductCardProps {
   product: Product;
-  onOrder: (product: Product) => void;
 }
 
-export function ProductCard({ product, onOrder }: ProductCardProps) {
+export function ProductCard({ product }: ProductCardProps) {
+  const navigate = useNavigate();
   const [likes, setLikes] = useState(product.likes_count);
   const [liked, setLiked] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
@@ -87,9 +89,9 @@ export function ProductCard({ product, onOrder }: ProductCardProps) {
             <Heart className="w-4 h-4" />
             {likes}
           </span>
-          <Button variant="order" size="sm" onClick={() => onOrder(product)}>
-            <ShoppingBag className="w-4 h-4" />
-            Order
+          <Button variant="order" size="sm" onClick={() => navigate(`/product/${product.id}`)}>
+            <Eye className="w-4 h-4" />
+            View
           </Button>
         </div>
       </CardContent>

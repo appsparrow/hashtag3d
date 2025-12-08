@@ -4,6 +4,7 @@ import { ProductGrid } from "@/components/ProductGrid";
 import { Footer } from "@/components/Footer";
 import { DonationBanner } from "@/components/DonationBanner";
 import { OrderTracker } from "@/components/OrderTracker";
+import { CartButton } from "@/components/CartButton";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 
@@ -12,6 +13,11 @@ const Index = () => {
 
   return (
     <main className="min-h-screen">
+      {/* Fixed Cart Button */}
+      <div className="fixed top-4 right-4 z-50">
+        <CartButton />
+      </div>
+      
       <Hero />
       <DonationBanner />
       

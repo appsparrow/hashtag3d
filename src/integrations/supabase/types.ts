@@ -14,6 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      cart_items: {
+        Row: {
+          created_at: string
+          customization_details: string | null
+          id: string
+          product_id: string | null
+          quantity: number
+          selected_colors: string[] | null
+          selected_material: string | null
+          selected_size: string | null
+          session_id: string
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customization_details?: string | null
+          id?: string
+          product_id?: string | null
+          quantity?: number
+          selected_colors?: string[] | null
+          selected_material?: string | null
+          selected_size?: string | null
+          session_id: string
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customization_details?: string | null
+          id?: string
+          product_id?: string | null
+          quantity?: number
+          selected_colors?: string[] | null
+          selected_material?: string | null
+          selected_size?: string | null
+          session_id?: string
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cart_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       colors: {
         Row: {
           created_at: string
