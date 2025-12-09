@@ -91,9 +91,12 @@ export function useCreateProduct() {
   
   return useMutation({
     mutationFn: async (product: CreateProductData) => {
+      // Exclude product_number from insert - let DB generate or leave null
+      const { product_number, ...productData } = product as any;
+      
       const { data, error } = await supabase
         .from("products")
-        .insert(product)
+        .insert(productData)
         .select()
         .single();
       
