@@ -54,7 +54,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setItems(data.map(item => ({
         id: item.id,
         product_id: item.product_id,
-        product: item.product as Product,
+        product: item.product as unknown as Product,
         quantity: item.quantity,
         selected_material: item.selected_material || "standard",
         selected_size: item.selected_size || "small",

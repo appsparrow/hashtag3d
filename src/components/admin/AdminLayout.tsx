@@ -1,7 +1,8 @@
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { 
   Package, 
   ShoppingCart, 
@@ -15,27 +16,28 @@ import {
   Building2
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useState } from "react";
+import { usePendingOrdersCount } from "@/hooks/usePendingOrdersCount";
 
 interface AdminLayoutProps {
   children: ReactNode;
 }
-
-const navItems = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/products", label: "Products", icon: Package },
-  { href: "/admin/products/new", label: "Add Product", icon: Plus },
-  { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
-  { href: "/admin/pricing", label: "Pricing", icon: Calculator },
-  { href: "/admin/configuration", label: "Configuration", icon: Settings },
-  { href: "/admin/settings", label: "Settings", icon: Building2 },
-];
 
 export function AdminLayout({ children }: AdminLayoutProps) {
   const { user, isAdmin, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { data: pendingCount = 0 } = usePendingOrdersCount();
+
+  const navItems = [
+    { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/admin/products", label: "Products", icon: Package },
+    { href: "/admin/products/new", label: "Add Product", icon: Plus },
+    { href: "/admin/orders", label: "Orders", icon: ShoppingCart, badge: pendingCount > 0 ? pendingCount : undefined },
+    { href: "/admin/pricing", label: "Pricing", icon: Calculator },
+    { href: "/admin/configuration", label: "Configuration", icon: Settings },
+    { href: "/admin/settings", label: "Settings", icon: Building2 },
+  ];
 
   useEffect(() => {
     if (!loading && !user) {
@@ -75,7 +77,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             }`}
           >
             <Icon className="w-5 h-5" />
-            {item.label}
+            <span className="flex-1">{item.label}</span>
+            {item.badge && (
+              <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center text-xs">
+                {item.badge}
+              </Badge>
+            )}
           </Link>
         );
       })}
