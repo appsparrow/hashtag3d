@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useDeliveryAreas, useLocalSetting, useUpdateLocalSetting } from "@/hooks/useLocalSettings";
-import { MapPin, Plus, X, Save, Instagram, Loader2, Youtube, Building2, Mail, Phone, DollarSign, Gift } from "lucide-react";
+import { MapPin, Plus, X, Save, Instagram, Loader2, Youtube, Building2, Mail, Phone, DollarSign, Gift, Globe } from "lucide-react";
 
 const CURRENCIES = [
   { code: "USD", symbol: "$", name: "US Dollar" },
@@ -37,6 +37,8 @@ export default function Settings() {
   const { data: freeShippingThresholdSetting } = useLocalSetting("free_shipping_threshold");
   const { data: promoEnabledSetting } = useLocalSetting("promo_enabled");
   const { data: promoMessageSetting } = useLocalSetting("promo_message");
+  const { data: tiktokSetting } = useLocalSetting("tiktok_url");
+  const { data: defaultCountrySetting } = useLocalSetting("default_country");
   const updateSetting = useUpdateLocalSetting();
   
   const [areas, setAreas] = useState<string[]>([]);
@@ -54,6 +56,8 @@ export default function Settings() {
   const [freeShippingThreshold, setFreeShippingThreshold] = useState("15.00");
   const [promoEnabled, setPromoEnabled] = useState(true);
   const [promoMessage, setPromoMessage] = useState("Like & follow us on Instagram/TikTok for FREE delivery! Limited time offer.");
+  const [tiktokUrl, setTiktokUrl] = useState("");
+  const [defaultCountry, setDefaultCountry] = useState("United States");
 
   useEffect(() => {
     if (deliveryAreas) setAreas(deliveryAreas);
@@ -111,6 +115,14 @@ export default function Settings() {
     if (promoMessageSetting?.setting_value) setPromoMessage(promoMessageSetting.setting_value as string);
   }, [promoMessageSetting]);
 
+  useEffect(() => {
+    if (tiktokSetting?.setting_value) setTiktokUrl(tiktokSetting.setting_value as string);
+  }, [tiktokSetting]);
+
+  useEffect(() => {
+    if (defaultCountrySetting?.setting_value) setDefaultCountry(defaultCountrySetting.setting_value as string);
+  }, [defaultCountrySetting]);
+
   const handleAddArea = () => {
     if (newArea.trim() && !areas.includes(newArea.trim())) {
       setAreas([...areas, newArea.trim()]);
@@ -133,6 +145,8 @@ export default function Settings() {
   };
   const handleSaveInstagram = () => updateSetting.mutateAsync({ key: "instagram_url", value: instagramUrl });
   const handleSaveYoutube = () => updateSetting.mutateAsync({ key: "youtube_url", value: youtubeUrl });
+  const handleSaveTiktok = () => updateSetting.mutateAsync({ key: "tiktok_url", value: tiktokUrl });
+  const handleSaveCountry = () => updateSetting.mutateAsync({ key: "default_country", value: defaultCountry });
   
   const handleSaveBusinessInfo = async () => {
     await updateSetting.mutateAsync({ key: "business_name", value: businessName });
@@ -379,15 +393,36 @@ export default function Settings() {
           </CardContent>
         </Card>
 
+        {/* Default Country */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Globe className="w-5 h-5 text-primary" />
+              Default Country
+            </CardTitle>
+            <CardDescription>Default country for shipping addresses.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Input
+              placeholder="United States"
+              value={defaultCountry}
+              onChange={(e) => setDefaultCountry(e.target.value)}
+            />
+            <Button onClick={handleSaveCountry} disabled={updateSetting.isPending}>
+              {updateSetting.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              Save
+            </Button>
+          </CardContent>
+        </Card>
+
         {/* Social Links */}
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-3 gap-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Instagram className="w-5 h-5 text-pink-500" />
-                Instagram Link
+                Instagram
               </CardTitle>
-              <CardDescription>Link to your Instagram profile.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <Input
@@ -395,9 +430,29 @@ export default function Settings() {
                 value={instagramUrl}
                 onChange={(e) => setInstagramUrl(e.target.value)}
               />
-              <Button onClick={handleSaveInstagram} disabled={updateSetting.isPending}>
-                {updateSetting.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                Save
+              <Button onClick={handleSaveInstagram} disabled={updateSetting.isPending} size="sm">
+                <Save className="w-4 h-4 mr-1" /> Save
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+                </svg>
+                TikTok
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Input
+                placeholder="https://tiktok.com/@yourprofile"
+                value={tiktokUrl}
+                onChange={(e) => setTiktokUrl(e.target.value)}
+              />
+              <Button onClick={handleSaveTiktok} disabled={updateSetting.isPending} size="sm">
+                <Save className="w-4 h-4 mr-1" /> Save
               </Button>
             </CardContent>
           </Card>
@@ -406,9 +461,8 @@ export default function Settings() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Youtube className="w-5 h-5 text-red-500" />
-                YouTube Link
+                YouTube
               </CardTitle>
-              <CardDescription>Link to your YouTube channel.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <Input
@@ -416,9 +470,8 @@ export default function Settings() {
                 value={youtubeUrl}
                 onChange={(e) => setYoutubeUrl(e.target.value)}
               />
-              <Button onClick={handleSaveYoutube} disabled={updateSetting.isPending}>
-                {updateSetting.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                Save
+              <Button onClick={handleSaveYoutube} disabled={updateSetting.isPending} size="sm">
+                <Save className="w-4 h-4 mr-1" /> Save
               </Button>
             </CardContent>
           </Card>
