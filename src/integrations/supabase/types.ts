@@ -365,6 +365,7 @@ export type Database = {
           allowed_materials: string[] | null
           allowed_sizes: string[] | null
           category: string
+          color_slots: Json | null
           colors: string[] | null
           created_at: string
           description: string | null
@@ -391,6 +392,7 @@ export type Database = {
           allowed_materials?: string[] | null
           allowed_sizes?: string[] | null
           category?: string
+          color_slots?: Json | null
           colors?: string[] | null
           created_at?: string
           description?: string | null
@@ -417,6 +419,7 @@ export type Database = {
           allowed_materials?: string[] | null
           allowed_sizes?: string[] | null
           category?: string
+          color_slots?: Json | null
           colors?: string[] | null
           created_at?: string
           description?: string | null

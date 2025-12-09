@@ -4,6 +4,7 @@ import { ArrowLeft, Minus, Plus, ShoppingCart, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useProducts } from "@/hooks/useProducts";
 import { usePricingSettings, useColors, MaterialCategory } from "@/hooks/usePricing";
@@ -11,6 +12,17 @@ import { useLocalSetting } from "@/hooks/useLocalSettings";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "@/hooks/use-toast";
 import defaultProductImage from "@/assets/default-product.jpg";
+
+interface ColorSlot {
+  id: string;
+  label: string;
+}
+
+interface ColorSelection {
+  slotId: string;
+  slotLabel: string;
+  colorName: string;
+}
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -27,19 +39,33 @@ export default function ProductDetail() {
   const [quantity, setQuantity] = useState(1);
   const [selectedMaterial, setSelectedMaterial] = useState("standard");
   const [selectedSize, setSelectedSize] = useState("small");
-  const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [colorSelections, setColorSelections] = useState<Record<string, string>>({});
   const [customization, setCustomization] = useState("");
+
+  // Parse color_slots from product
+  const colorSlots: ColorSlot[] = useMemo(() => {
+    const rawSlots = (product as any)?.color_slots;
+    if (rawSlots && Array.isArray(rawSlots)) {
+      return rawSlots as ColorSlot[];
+    }
+    return [];
+  }, [product]);
 
   useEffect(() => {
     if (product) {
-      const numColors = (product as any).num_colors || 1;
-      setSelectedColors(Array(numColors).fill(""));
+      // Initialize color selections based on color_slots
+      const initialSelections: Record<string, string> = {};
+      colorSlots.forEach(slot => {
+        initialSelections[slot.id] = "";
+      });
+      setColorSelections(initialSelections);
+      
       const allowedMaterials = (product as any).allowed_materials || ["standard"];
       const allowedSizes = (product as any).allowed_sizes || ["small"];
       if (allowedMaterials.length > 0) setSelectedMaterial(allowedMaterials[0]);
       if (allowedSizes.length > 0) setSelectedSize(allowedSizes[0]);
     }
-  }, [product]);
+  }, [product, colorSlots]);
 
   const getSetting = (key: string) => pricingSettings.find(s => s.setting_key === key)?.setting_value || 0;
 
@@ -54,6 +80,11 @@ export default function ProductDetail() {
       }, { standard: [], premium: [], ultra: [] } as Record<MaterialCategory, typeof dbColors>);
   }, [product?.colors, dbColors]);
 
+  // Get selected color names as array for cart
+  const selectedColorsArray = useMemo(() => {
+    return Object.values(colorSelections).filter(c => c);
+  }, [colorSelections]);
+
   const unitPrice = useMemo(() => {
     if (!product || pricingSettings.length === 0) return 0;
 
@@ -64,26 +95,31 @@ export default function ProductDetail() {
     const sizeUpcharge = getSetting(`size_${selectedSize}_upcharge`);
     
     let colorUpcharge = 0;
-    selectedColors.forEach(colorName => {
+    selectedColorsArray.forEach(colorName => {
       if (!colorName) return;
       const color = dbColors.find(c => c.name === colorName);
       if (color?.material?.category === "premium") colorUpcharge += getSetting("color_premium_upcharge");
       else if (color?.material?.category === "ultra") colorUpcharge += getSetting("color_ultra_upcharge");
     });
 
-    const numColors = selectedColors.filter(c => c).length;
+    const numColors = selectedColorsArray.length;
     const amsFee = numColors > 1 
       ? getSetting("ams_base_fee") + (numColors - 1) * getSetting("ams_per_color_fee")
       : 0;
     const customizationFee = product.is_customizable && customization ? 2 : 0;
 
     return basePrice + materialUpcharge + sizeUpcharge + colorUpcharge + amsFee + customizationFee;
-  }, [product, selectedMaterial, selectedSize, selectedColors, customization, pricingSettings, dbColors]);
+  }, [product, selectedMaterial, selectedSize, selectedColorsArray, customization, pricingSettings, dbColors]);
 
-  const handleColorChange = (index: number, colorName: string) => {
-    const newColors = [...selectedColors];
-    newColors[index] = colorName;
-    setSelectedColors(newColors);
+  const handleColorChange = (slotId: string, colorName: string) => {
+    setColorSelections(prev => ({ ...prev, [slotId]: colorName }));
+  };
+
+  // Format color selections for display/storage
+  const formatColorSelectionsForStorage = (): string[] => {
+    return colorSlots
+      .filter(slot => colorSelections[slot.id])
+      .map(slot => `${slot.label}: ${colorSelections[slot.id]}`);
   };
 
   const handleAddToCart = async () => {
@@ -95,7 +131,7 @@ export default function ProductDetail() {
       quantity,
       selected_material: selectedMaterial,
       selected_size: selectedSize,
-      selected_colors: selectedColors.filter(c => c),
+      selected_colors: formatColorSelectionsForStorage(),
       customization_details: customization || null,
       unit_price: unitPrice,
     });
@@ -122,7 +158,6 @@ export default function ProductDetail() {
   }
 
   const imageUrl = product.images?.[0] || defaultProductImage;
-  const numColorsAllowed = (product as any).num_colors || 1;
   const allowedSizes = (product as any).allowed_sizes || ["small", "medium", "large"];
   const allowedMaterials = (product as any).allowed_materials || ["standard"];
 
@@ -202,58 +237,87 @@ export default function ProductDetail() {
                 </div>
               )}
 
-              {/* Color Selection */}
-              {product.colors && product.colors.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Colors ({numColorsAllowed} selection{numColorsAllowed > 1 ? "s" : ""})</Label>
-                  <div className="space-y-2">
-                    {Array.from({ length: numColorsAllowed }).map((_, index) => (
-                      <Select key={index} value={selectedColors[index] || ""} onValueChange={(v) => handleColorChange(index, v)}>
-                        <SelectTrigger><SelectValue placeholder={`Select color ${index + 1}`} /></SelectTrigger>
-                        <SelectContent>
-                          {availableColors.standard.length > 0 && (
-                            <>
-                              <div className="px-2 py-1 text-xs text-muted-foreground font-medium">Standard</div>
-                              {availableColors.standard.map(c => (
-                                <SelectItem key={c.id} value={c.name}>
-                                  <div className="flex items-center gap-2">
-                                    <span className="w-3 h-3 rounded-full border" style={{ backgroundColor: c.hex_color }} />
-                                    {c.name}
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </>
-                          )}
-                          {availableColors.premium.length > 0 && (
-                            <>
-                              <div className="px-2 py-1 text-xs text-muted-foreground font-medium mt-1">Premium (+{currencySymbol}{getSetting("color_premium_upcharge")})</div>
-                              {availableColors.premium.map(c => (
-                                <SelectItem key={c.id} value={c.name}>
-                                  <div className="flex items-center gap-2">
-                                    <span className="w-3 h-3 rounded-full border" style={{ backgroundColor: c.hex_color }} />
-                                    {c.name}
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </>
-                          )}
-                          {availableColors.ultra.length > 0 && (
-                            <>
-                              <div className="px-2 py-1 text-xs text-muted-foreground font-medium mt-1">Ultra (+{currencySymbol}{getSetting("color_ultra_upcharge")})</div>
-                              {availableColors.ultra.map(c => (
-                                <SelectItem key={c.id} value={c.name}>
-                                  <div className="flex items-center gap-2">
-                                    <span className="w-3 h-3 rounded-full border" style={{ backgroundColor: c.hex_color }} />
-                                    {c.name}
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </>
-                          )}
-                        </SelectContent>
-                      </Select>
+              {/* Color Selection with Labels */}
+              {colorSlots.length > 0 && product.colors && product.colors.length > 0 && (
+                <div className="space-y-3">
+                  <Label>Select Colors ({colorSlots.length} selection{colorSlots.length > 1 ? "s" : ""})</Label>
+                  <div className="space-y-3">
+                    {colorSlots.map((slot) => (
+                      <div key={slot.id} className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">{slot.label}</Badge>
+                        </div>
+                        <Select 
+                          value={colorSelections[slot.id] || ""} 
+                          onValueChange={(v) => handleColorChange(slot.id, v)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={`Select ${slot.label.toLowerCase()} color`} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableColors.standard.length > 0 && (
+                              <>
+                                <div className="px-2 py-1 text-xs text-muted-foreground font-medium">Standard</div>
+                                {availableColors.standard.map(c => (
+                                  <SelectItem key={c.id} value={c.name}>
+                                    <div className="flex items-center gap-2">
+                                      <span className="w-3 h-3 rounded-full border" style={{ backgroundColor: c.hex_color }} />
+                                      {c.name}
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </>
+                            )}
+                            {availableColors.premium.length > 0 && (
+                              <>
+                                <div className="px-2 py-1 text-xs text-muted-foreground font-medium mt-1">Premium (+{currencySymbol}{getSetting("color_premium_upcharge")})</div>
+                                {availableColors.premium.map(c => (
+                                  <SelectItem key={c.id} value={c.name}>
+                                    <div className="flex items-center gap-2">
+                                      <span className="w-3 h-3 rounded-full border" style={{ backgroundColor: c.hex_color }} />
+                                      {c.name}
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </>
+                            )}
+                            {availableColors.ultra.length > 0 && (
+                              <>
+                                <div className="px-2 py-1 text-xs text-muted-foreground font-medium mt-1">Ultra (+{currencySymbol}{getSetting("color_ultra_upcharge")})</div>
+                                {availableColors.ultra.map(c => (
+                                  <SelectItem key={c.id} value={c.name}>
+                                    <div className="flex items-center gap-2">
+                                      <span className="w-3 h-3 rounded-full border" style={{ backgroundColor: c.hex_color }} />
+                                      {c.name}
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     ))}
                   </div>
+                  {/* Show selected colors summary */}
+                  {selectedColorsArray.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      {colorSlots.map(slot => {
+                        const colorName = colorSelections[slot.id];
+                        if (!colorName) return null;
+                        const color = dbColors.find(c => c.name === colorName);
+                        return (
+                          <Badge key={slot.id} variant="secondary" className="flex items-center gap-1.5">
+                            <span 
+                              className="w-3 h-3 rounded-full border border-border/50" 
+                              style={{ backgroundColor: color?.hex_color || '#ccc' }}
+                            />
+                            {slot.label}: {colorName}
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
 

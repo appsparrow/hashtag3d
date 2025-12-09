@@ -11,9 +11,10 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Upload, X, Video, Image as ImageIcon, Palette, Package, Ruler, DollarSign } from "lucide-react";
+import { ArrowLeft, Upload, X, Video, Image as ImageIcon, Palette, Package, Ruler, DollarSign, Plus, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useColors, usePricingSettings } from "@/hooks/usePricing";
 
@@ -29,6 +30,22 @@ const SIZE_OPTIONS = [
   { value: "large", label: "Large" },
 ];
 
+const PRESET_COLOR_SLOTS = [
+  { id: "background", label: "Background" },
+  { id: "foreground", label: "Foreground" },
+  { id: "text", label: "Text Color" },
+  { id: "border", label: "Border" },
+  { id: "accent", label: "Accent" },
+  { id: "primary", label: "Primary Color" },
+  { id: "secondary", label: "Secondary Color" },
+  { id: "highlight", label: "Highlight" },
+];
+
+export interface ColorSlot {
+  id: string;
+  label: string;
+}
+
 interface ProductFormData {
   title: string;
   description: string;
@@ -43,7 +60,7 @@ interface ProductFormData {
   images: string[];
   video_url: string;
   is_active: boolean;
-  num_colors: number;
+  color_slots: ColorSlot[];
   estimated_grams_standard: number;
   estimated_grams_premium: number;
   estimated_grams_ultra: number;
@@ -75,7 +92,7 @@ export default function ProductForm() {
     images: [],
     video_url: "",
     is_active: true,
-    num_colors: 1,
+    color_slots: [],
     estimated_grams_standard: 0,
     estimated_grams_premium: 0,
     estimated_grams_ultra: 0,
@@ -111,6 +128,13 @@ export default function ProductForm() {
 
   useEffect(() => {
     if (existingProduct) {
+      // Parse color_slots from the product
+      let colorSlots: ColorSlot[] = [];
+      const rawSlots = (existingProduct as any).color_slots;
+      if (rawSlots && Array.isArray(rawSlots)) {
+        colorSlots = rawSlots as ColorSlot[];
+      }
+      
       setFormData({
         title: existingProduct.title,
         description: existingProduct.description ?? "",
@@ -125,7 +149,7 @@ export default function ProductForm() {
         images: existingProduct.images ?? [],
         video_url: existingProduct.video_url ?? "",
         is_active: existingProduct.is_active,
-        num_colors: 1,
+        color_slots: colorSlots,
         estimated_grams_standard: Number(existingProduct.estimated_grams_standard) || 0,
         estimated_grams_premium: Number(existingProduct.estimated_grams_premium) || 0,
         estimated_grams_ultra: Number(existingProduct.estimated_grams_ultra) || 0,
@@ -210,6 +234,20 @@ export default function ProductForm() {
     setFormData({ ...formData, allowed_sizes: updated });
   };
 
+  const addColorSlot = (slotId: string) => {
+    const preset = PRESET_COLOR_SLOTS.find(s => s.id === slotId);
+    if (!preset) return;
+    if (formData.color_slots.some(s => s.id === slotId)) {
+      toast({ title: "This slot is already added", variant: "destructive" });
+      return;
+    }
+    setFormData({ ...formData, color_slots: [...formData.color_slots, { ...preset }] });
+  };
+
+  const removeColorSlot = (slotId: string) => {
+    setFormData({ ...formData, color_slots: formData.color_slots.filter(s => s.id !== slotId) });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -232,6 +270,7 @@ export default function ProductForm() {
       images: formData.images,
       video_url: formData.video_url,
       is_active: formData.is_active,
+      color_slots: formData.color_slots,
       estimated_grams_standard: formData.estimated_grams_standard,
       estimated_grams_premium: formData.estimated_grams_premium,
       estimated_grams_ultra: formData.estimated_grams_ultra,
@@ -239,9 +278,9 @@ export default function ProductForm() {
     };
 
     if (isEditing && id) {
-      await updateProduct.mutateAsync({ id, ...submitData });
+      await updateProduct.mutateAsync({ id, ...submitData } as any);
     } else {
-      await createProduct.mutateAsync(submitData);
+      await createProduct.mutateAsync(submitData as any);
     }
     
     navigate("/admin/products");
@@ -308,35 +347,19 @@ export default function ProductForm() {
                   />
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="price">Base Price ($) *</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={formData.price}
-                      onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
-                      required
-                    />
-                    <p className="text-xs text-muted-foreground">Starting price. Customer selections add to this.</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="num_colors">How Many Colors Can Customer Pick?</Label>
-                    <Input
-                      id="num_colors"
-                      type="number"
-                      min="1"
-                      max="8"
-                      value={formData.num_colors}
-                      onChange={(e) => setFormData({ ...formData, num_colors: parseInt(e.target.value) || 1 })}
-                    />
-                    <p className="text-xs text-muted-foreground">Multiple colors add AMS fees.</p>
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="price">Base Price ($) *</Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.price}
+                    onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">Starting price. Customer selections add to this.</p>
                 </div>
-
                 <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
                   <div className="space-y-1">
                     <Label>Active</Label>
@@ -561,17 +584,82 @@ export default function ProductForm() {
               </CardContent>
             </Card>
 
-            {/* Colors from Database */}
+            {/* Color Slots Configuration */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Palette className="w-5 h-5" />
-                  Available Colors for Customers
+                  Color Slots for Customers
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Select which colors customers can choose from. Customer will pick {formData.num_colors} color{formData.num_colors !== 1 ? 's' : ''}.
+                  Define which color selections customers need to make (e.g., Background, Foreground, Text Color).
+                  Each slot will let customers pick from available colors.
+                </p>
+                
+                {/* Add Color Slot */}
+                <div className="flex gap-2">
+                  <Select onValueChange={addColorSlot}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Add a color slot..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PRESET_COLOR_SLOTS.filter(s => !formData.color_slots.some(cs => cs.id === s.id)).map((slot) => (
+                        <SelectItem key={slot.id} value={slot.id}>
+                          {slot.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Current Color Slots */}
+                {formData.color_slots.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Active Color Slots</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {formData.color_slots.map((slot) => (
+                        <Badge
+                          key={slot.id}
+                          variant="secondary"
+                          className="px-3 py-1.5 flex items-center gap-2"
+                        >
+                          {slot.label}
+                          <button
+                            type="button"
+                            onClick={() => removeColorSlot(slot.id)}
+                            className="ml-1 hover:text-destructive"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Customers will select {formData.color_slots.length} color{formData.color_slots.length !== 1 ? 's' : ''}.
+                      {formData.color_slots.length > 1 && ' Multiple colors add AMS fees.'}
+                    </p>
+                  </div>
+                )}
+
+                {formData.color_slots.length === 0 && (
+                  <p className="text-sm text-muted-foreground italic">No color slots defined. Customers won't be able to select colors.</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Available Colors from Database */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Palette className="w-5 h-5" />
+                  Available Color Options
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Select which colors customers can choose from for each slot.
                   Premium/Ultra colors add upcharges.
                 </p>
                 {Object.entries(colorsByCategory).map(([category, colors]) => (
@@ -671,7 +759,7 @@ export default function ProductForm() {
             basePrice={formData.price}
             allowedMaterials={formData.allowed_materials}
             allowedSizes={formData.allowed_sizes}
-            numColors={formData.num_colors}
+            numColors={formData.color_slots.length}
             isCustomizable={formData.is_customizable}
             estimatedGramsStandard={formData.estimated_grams_standard}
             estimatedGramsPremium={formData.estimated_grams_premium}
