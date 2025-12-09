@@ -74,15 +74,20 @@ export default function Checkout() {
     return parts.join(", ");
   }, [formData.addressLine1, formData.city, formData.state, formData.country]);
 
-  // Auto-detect if address is in delivery zone
+  // Auto-detect if address is in delivery zone (checks both city AND state)
   const detectedZone = useMemo(() => {
-    if (!formData.city || !deliveryAreas) return null;
-    const cityLower = formData.city.toLowerCase();
-    return deliveryAreas.find(area => 
-      cityLower.includes(area.toLowerCase().split(",")[0].toLowerCase()) ||
-      area.toLowerCase().split(",")[0].toLowerCase().includes(cityLower)
-    ) || null;
-  }, [formData.city, deliveryAreas]);
+    if (!formData.city || !formData.state || !deliveryAreas) return null;
+    const cityLower = formData.city.toLowerCase().trim();
+    const stateLower = formData.state.toLowerCase().trim();
+    
+    return deliveryAreas.find(area => {
+      const parts = area.split(",").map(p => p.trim().toLowerCase());
+      const areaCity = parts[0] || "";
+      const areaState = parts[1] || "";
+      // Match city name exactly and state abbreviation/name
+      return cityLower === areaCity && (stateLower === areaState || stateLower.startsWith(areaState) || areaState.startsWith(stateLower));
+    }) || null;
+  }, [formData.city, formData.state, deliveryAreas]);
 
   const isInDeliveryArea = !!detectedZone;
 
@@ -432,40 +437,45 @@ export default function Checkout() {
                     <span className="text-sm text-muted-foreground">Like & subscribe to any of our channels and get free delivery today!</span>
                   </p>
                   
-                  {/* Social Media Icons */}
+                  {/* Social Media Icons - Always show all 3 */}
                   <div className="flex items-center gap-3 mb-4">
-                    {instagramUrl && (
-                      <a 
-                        href={instagramUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="p-3 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 text-white hover:scale-110 transition-transform"
-                      >
-                        <Instagram className="w-6 h-6" />
-                      </a>
-                    )}
-                    {tiktokUrl && (
-                      <a 
-                        href={tiktokUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="p-3 rounded-lg bg-black text-white hover:scale-110 transition-transform"
-                      >
-                        <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
-                        </svg>
-                      </a>
-                    )}
-                    {youtubeUrl && (
-                      <a 
-                        href={youtubeUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="p-3 rounded-lg bg-red-600 text-white hover:scale-110 transition-transform"
-                      >
-                        <Youtube className="w-6 h-6" />
-                      </a>
-                    )}
+                    {/* Instagram */}
+                    <a 
+                      href={instagramUrl || "#"} 
+                      target={instagramUrl ? "_blank" : undefined}
+                      rel="noopener noreferrer"
+                      onClick={(e) => !instagramUrl && e.preventDefault()}
+                      className={`p-3 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 text-white transition-transform ${instagramUrl ? "hover:scale-110 cursor-pointer" : "opacity-50 cursor-not-allowed"}`}
+                      title={instagramUrl ? "Follow us on Instagram" : "Instagram (not configured)"}
+                    >
+                      <Instagram className="w-6 h-6" />
+                    </a>
+                    
+                    {/* TikTok */}
+                    <a 
+                      href={tiktokUrl || "#"} 
+                      target={tiktokUrl ? "_blank" : undefined}
+                      rel="noopener noreferrer"
+                      onClick={(e) => !tiktokUrl && e.preventDefault()}
+                      className={`p-3 rounded-lg bg-black text-white transition-transform ${tiktokUrl ? "hover:scale-110 cursor-pointer" : "opacity-50 cursor-not-allowed"}`}
+                      title={tiktokUrl ? "Follow us on TikTok" : "TikTok (not configured)"}
+                    >
+                      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+                      </svg>
+                    </a>
+                    
+                    {/* YouTube */}
+                    <a 
+                      href={youtubeUrl || "#"} 
+                      target={youtubeUrl ? "_blank" : undefined}
+                      rel="noopener noreferrer"
+                      onClick={(e) => !youtubeUrl && e.preventDefault()}
+                      className={`p-3 rounded-lg bg-red-600 text-white transition-transform ${youtubeUrl ? "hover:scale-110 cursor-pointer" : "opacity-50 cursor-not-allowed"}`}
+                      title={youtubeUrl ? "Subscribe on YouTube" : "YouTube (not configured)"}
+                    >
+                      <Youtube className="w-6 h-6" />
+                    </a>
                   </div>
 
                   {/* Checkbox confirmation */}
