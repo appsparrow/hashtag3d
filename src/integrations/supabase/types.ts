@@ -369,9 +369,9 @@ export type Database = {
           colors: string[] | null
           created_at: string
           description: string | null
-          estimated_grams_premium: number
-          estimated_grams_standard: number
-          estimated_grams_ultra: number
+          estimated_grams_large: number
+          estimated_grams_medium: number
+          estimated_grams_small: number
           id: string
           images: string[] | null
           infill_options: string[] | null
@@ -396,9 +396,9 @@ export type Database = {
           colors?: string[] | null
           created_at?: string
           description?: string | null
-          estimated_grams_premium?: number
-          estimated_grams_standard?: number
-          estimated_grams_ultra?: number
+          estimated_grams_large?: number
+          estimated_grams_medium?: number
+          estimated_grams_small?: number
           id?: string
           images?: string[] | null
           infill_options?: string[] | null
@@ -423,9 +423,9 @@ export type Database = {
           colors?: string[] | null
           created_at?: string
           description?: string | null
-          estimated_grams_premium?: number
-          estimated_grams_standard?: number
-          estimated_grams_ultra?: number
+          estimated_grams_large?: number
+          estimated_grams_medium?: number
+          estimated_grams_small?: number
           id?: string
           images?: string[] | null
           infill_options?: string[] | null

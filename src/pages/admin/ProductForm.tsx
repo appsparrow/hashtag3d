@@ -61,9 +61,9 @@ interface ProductFormData {
   video_url: string;
   is_active: boolean;
   color_slots: ColorSlot[];
-  estimated_grams_standard: number;
-  estimated_grams_premium: number;
-  estimated_grams_ultra: number;
+  estimated_grams_small: number;
+  estimated_grams_medium: number;
+  estimated_grams_large: number;
   accessories_cost: number;
 }
 
@@ -93,9 +93,9 @@ export default function ProductForm() {
     video_url: "",
     is_active: true,
     color_slots: [],
-    estimated_grams_standard: 0,
-    estimated_grams_premium: 0,
-    estimated_grams_ultra: 0,
+    estimated_grams_small: 0,
+    estimated_grams_medium: 0,
+    estimated_grams_large: 0,
     accessories_cost: 0,
   });
 
@@ -150,9 +150,9 @@ export default function ProductForm() {
         video_url: existingProduct.video_url ?? "",
         is_active: existingProduct.is_active,
         color_slots: colorSlots,
-        estimated_grams_standard: Number(existingProduct.estimated_grams_standard) || 0,
-        estimated_grams_premium: Number(existingProduct.estimated_grams_premium) || 0,
-        estimated_grams_ultra: Number(existingProduct.estimated_grams_ultra) || 0,
+        estimated_grams_small: Number((existingProduct as any).estimated_grams_small) || 0,
+        estimated_grams_medium: Number((existingProduct as any).estimated_grams_medium) || 0,
+        estimated_grams_large: Number((existingProduct as any).estimated_grams_large) || 0,
         accessories_cost: Number(existingProduct.accessories_cost) || 0,
       });
     }
@@ -271,9 +271,9 @@ export default function ProductForm() {
       video_url: formData.video_url,
       is_active: formData.is_active,
       color_slots: formData.color_slots,
-      estimated_grams_standard: formData.estimated_grams_standard,
-      estimated_grams_premium: formData.estimated_grams_premium,
-      estimated_grams_ultra: formData.estimated_grams_ultra,
+      estimated_grams_small: formData.estimated_grams_small,
+      estimated_grams_medium: formData.estimated_grams_medium,
+      estimated_grams_large: formData.estimated_grams_large,
       accessories_cost: formData.accessories_cost,
     };
 
@@ -378,45 +378,45 @@ export default function ProductForm() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <DollarSign className="w-5 h-5" />
-                  Cost Estimation (Internal)
+                  Filament Usage by Size (Internal)
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Estimated filament usage per material tier and accessories cost. Used for profit calculations.
+                  Estimated filament grams needed for each size. Used with material cost_per_gram for pricing.
                 </p>
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div className="space-y-2">
-                    <Label htmlFor="grams_standard">Standard (grams)</Label>
+                    <Label htmlFor="grams_small">Small (grams)</Label>
                     <Input
-                      id="grams_standard"
+                      id="grams_small"
                       type="number"
                       min="0"
                       step="0.1"
-                      value={formData.estimated_grams_standard}
-                      onChange={(e) => setFormData({ ...formData, estimated_grams_standard: parseFloat(e.target.value) || 0 })}
+                      value={formData.estimated_grams_small}
+                      onChange={(e) => setFormData({ ...formData, estimated_grams_small: parseFloat(e.target.value) || 0 })}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="grams_premium">Premium (grams)</Label>
+                    <Label htmlFor="grams_medium">Medium (grams)</Label>
                     <Input
-                      id="grams_premium"
+                      id="grams_medium"
                       type="number"
                       min="0"
                       step="0.1"
-                      value={formData.estimated_grams_premium}
-                      onChange={(e) => setFormData({ ...formData, estimated_grams_premium: parseFloat(e.target.value) || 0 })}
+                      value={formData.estimated_grams_medium}
+                      onChange={(e) => setFormData({ ...formData, estimated_grams_medium: parseFloat(e.target.value) || 0 })}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="grams_ultra">Ultra (grams)</Label>
+                    <Label htmlFor="grams_large">Large (grams)</Label>
                     <Input
-                      id="grams_ultra"
+                      id="grams_large"
                       type="number"
                       min="0"
                       step="0.1"
-                      value={formData.estimated_grams_ultra}
-                      onChange={(e) => setFormData({ ...formData, estimated_grams_ultra: parseFloat(e.target.value) || 0 })}
+                      value={formData.estimated_grams_large}
+                      onChange={(e) => setFormData({ ...formData, estimated_grams_large: parseFloat(e.target.value) || 0 })}
                     />
                   </div>
                 </div>
@@ -761,9 +761,9 @@ export default function ProductForm() {
             allowedSizes={formData.allowed_sizes}
             numColors={formData.color_slots.length}
             isCustomizable={formData.is_customizable}
-            estimatedGramsStandard={formData.estimated_grams_standard}
-            estimatedGramsPremium={formData.estimated_grams_premium}
-            estimatedGramsUltra={formData.estimated_grams_ultra}
+            estimatedGramsSmall={formData.estimated_grams_small}
+            estimatedGramsMedium={formData.estimated_grams_medium}
+            estimatedGramsLarge={formData.estimated_grams_large}
             accessoriesCost={formData.accessories_cost}
           />
         </div>
