@@ -381,6 +381,9 @@ export type Database = {
           materials: string[] | null
           personalization_options: string | null
           price: number
+          print_time_large: number
+          print_time_medium: number
+          print_time_small: number
           product_number: string | null
           sizes: string[] | null
           title: string
@@ -408,6 +411,9 @@ export type Database = {
           materials?: string[] | null
           personalization_options?: string | null
           price?: number
+          print_time_large?: number
+          print_time_medium?: number
+          print_time_small?: number
           product_number?: string | null
           sizes?: string[] | null
           title: string
@@ -435,6 +441,9 @@ export type Database = {
           materials?: string[] | null
           personalization_options?: string | null
           price?: number
+          print_time_large?: number
+          print_time_medium?: number
+          print_time_small?: number
           product_number?: string | null
           sizes?: string[] | null
           title?: string
