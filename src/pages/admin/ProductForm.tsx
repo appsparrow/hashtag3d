@@ -64,6 +64,9 @@ interface ProductFormData {
   estimated_grams_small: number;
   estimated_grams_medium: number;
   estimated_grams_large: number;
+  print_time_small: number;
+  print_time_medium: number;
+  print_time_large: number;
   accessories_cost: number;
 }
 
@@ -96,6 +99,9 @@ export default function ProductForm() {
     estimated_grams_small: 0,
     estimated_grams_medium: 0,
     estimated_grams_large: 0,
+    print_time_small: 60,
+    print_time_medium: 120,
+    print_time_large: 180,
     accessories_cost: 0,
   });
 
@@ -153,6 +159,9 @@ export default function ProductForm() {
         estimated_grams_small: Number((existingProduct as any).estimated_grams_small) || 0,
         estimated_grams_medium: Number((existingProduct as any).estimated_grams_medium) || 0,
         estimated_grams_large: Number((existingProduct as any).estimated_grams_large) || 0,
+        print_time_small: Number((existingProduct as any).print_time_small) || 60,
+        print_time_medium: Number((existingProduct as any).print_time_medium) || 120,
+        print_time_large: Number((existingProduct as any).print_time_large) || 180,
         accessories_cost: Number(existingProduct.accessories_cost) || 0,
       });
     }
@@ -274,8 +283,10 @@ export default function ProductForm() {
       estimated_grams_small: formData.estimated_grams_small,
       estimated_grams_medium: formData.estimated_grams_medium,
       estimated_grams_large: formData.estimated_grams_large,
+      print_time_small: formData.print_time_small,
+      print_time_medium: formData.print_time_medium,
+      print_time_large: formData.print_time_large,
       accessories_cost: formData.accessories_cost,
-      product_number: null, // Explicitly set to null to avoid unique constraint issues
     };
 
     if (isEditing && id) {
@@ -420,28 +431,30 @@ export default function ProductForm() {
               </CardContent>
             </Card>
 
-            {/* Allowed Sizes & Weights */}
+            {/* Allowed Sizes, Weights & Print Times */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Ruler className="w-5 h-5" />
-                  Allowed Sizes & Weight Estimates
+                  Allowed Sizes, Weight & Print Time Estimates
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Select available sizes and specify filament weight (grams) for each.
+                  Select available sizes and specify filament weight (grams) and estimated print time (minutes) for each.
                 </p>
                 <div className="grid gap-3">
                   {SIZE_OPTIONS.map((size) => {
                     const gramsKey = `estimated_grams_${size.value}` as keyof ProductFormData;
+                    const timeKey = `print_time_${size.value}` as keyof ProductFormData;
                     const gramsValue = formData[gramsKey] as number;
+                    const timeValue = formData[timeKey] as number;
                     const isSelected = formData.allowed_sizes.includes(size.value);
                     
                     return (
                       <div
                         key={size.value}
-                        className={`flex items-center justify-between gap-4 p-4 rounded-lg border transition-colors ${
+                        className={`flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-lg border transition-colors ${
                           isSelected
                             ? "border-primary bg-primary/5"
                             : "border-border"
@@ -457,7 +470,7 @@ export default function ProductForm() {
                             {size.label}
                           </Label>
                         </div>
-                        <div className="flex items-center gap-2 flex-1 max-w-[200px]">
+                        <div className="flex items-center gap-2 flex-1 max-w-[160px]">
                           <Input
                             type="number"
                             min="0"
@@ -472,6 +485,22 @@ export default function ProductForm() {
                             disabled={!isSelected}
                           />
                           <span className="text-sm text-muted-foreground whitespace-nowrap">grams</span>
+                        </div>
+                        <div className="flex items-center gap-2 flex-1 max-w-[160px]">
+                          <Input
+                            type="number"
+                            min="0"
+                            step="1"
+                            placeholder="60"
+                            value={timeValue || ""}
+                            onChange={(e) => setFormData({ 
+                              ...formData, 
+                              [timeKey]: parseInt(e.target.value) || 0 
+                            })}
+                            className="h-9"
+                            disabled={!isSelected}
+                          />
+                          <span className="text-sm text-muted-foreground whitespace-nowrap">mins</span>
                         </div>
                       </div>
                     );

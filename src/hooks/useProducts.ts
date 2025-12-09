@@ -24,6 +24,9 @@ export interface Product {
   estimated_grams_small: number;
   estimated_grams_medium: number;
   estimated_grams_large: number;
+  print_time_small: number;
+  print_time_medium: number;
+  print_time_large: number;
   accessories_cost: number;
   created_at: string;
   updated_at: string;
@@ -48,6 +51,9 @@ export interface CreateProductData {
   estimated_grams_small?: number;
   estimated_grams_medium?: number;
   estimated_grams_large?: number;
+  print_time_small?: number;
+  print_time_medium?: number;
+  print_time_large?: number;
   accessories_cost?: number;
 }
 
@@ -64,7 +70,7 @@ export function useProducts(includeInactive = false) {
       const { data, error } = await query;
       
       if (error) throw error;
-      return data as Product[];
+      return (data ?? []) as unknown as Product[];
     },
   });
 }
@@ -80,7 +86,7 @@ export function useProduct(id: string) {
         .maybeSingle();
       
       if (error) throw error;
-      return data as Product | null;
+      return data as unknown as Product | null;
     },
     enabled: !!id,
   });
