@@ -6,8 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { useDeliveryAreas, useLocalSetting, useUpdateLocalSetting } from "@/hooks/useLocalSettings";
-import { MapPin, Plus, X, Save, Instagram, Loader2, Youtube, Building2, Mail, Phone, DollarSign } from "lucide-react";
+import { MapPin, Plus, X, Save, Instagram, Loader2, Youtube, Building2, Mail, Phone, DollarSign, Gift } from "lucide-react";
 
 const CURRENCIES = [
   { code: "USD", symbol: "$", name: "US Dollar" },
@@ -33,6 +35,8 @@ export default function Settings() {
   const { data: promoCodeSetting } = useLocalSetting("free_delivery_promo_code");
   const { data: shippingFeeSetting } = useLocalSetting("shipping_fee");
   const { data: freeShippingThresholdSetting } = useLocalSetting("free_shipping_threshold");
+  const { data: promoEnabledSetting } = useLocalSetting("promo_enabled");
+  const { data: promoMessageSetting } = useLocalSetting("promo_message");
   const updateSetting = useUpdateLocalSetting();
   
   const [areas, setAreas] = useState<string[]>([]);
@@ -48,6 +52,8 @@ export default function Settings() {
   const [promoCode, setPromoCode] = useState("");
   const [shippingFee, setShippingFee] = useState("8.00");
   const [freeShippingThreshold, setFreeShippingThreshold] = useState("15.00");
+  const [promoEnabled, setPromoEnabled] = useState(true);
+  const [promoMessage, setPromoMessage] = useState("Like & follow us on Instagram/TikTok for FREE delivery! Limited time offer.");
 
   useEffect(() => {
     if (deliveryAreas) setAreas(deliveryAreas);
@@ -97,6 +103,14 @@ export default function Settings() {
     if (freeShippingThresholdSetting?.setting_value !== undefined) setFreeShippingThreshold(String(freeShippingThresholdSetting.setting_value));
   }, [freeShippingThresholdSetting]);
 
+  useEffect(() => {
+    if (promoEnabledSetting?.setting_value !== undefined) setPromoEnabled(promoEnabledSetting.setting_value as boolean);
+  }, [promoEnabledSetting]);
+
+  useEffect(() => {
+    if (promoMessageSetting?.setting_value) setPromoMessage(promoMessageSetting.setting_value as string);
+  }, [promoMessageSetting]);
+
   const handleAddArea = () => {
     if (newArea.trim() && !areas.includes(newArea.trim())) {
       setAreas([...areas, newArea.trim()]);
@@ -114,6 +128,8 @@ export default function Settings() {
     await updateSetting.mutateAsync({ key: "free_delivery_promo_code", value: promoCode.toUpperCase() });
     await updateSetting.mutateAsync({ key: "shipping_fee", value: parseFloat(shippingFee) || 8.00 });
     await updateSetting.mutateAsync({ key: "free_shipping_threshold", value: parseFloat(freeShippingThreshold) || 15.00 });
+    await updateSetting.mutateAsync({ key: "promo_enabled", value: promoEnabled });
+    await updateSetting.mutateAsync({ key: "promo_message", value: promoMessage });
   };
   const handleSaveInstagram = () => updateSetting.mutateAsync({ key: "instagram_url", value: instagramUrl });
   const handleSaveYoutube = () => updateSetting.mutateAsync({ key: "youtube_url", value: youtubeUrl });
@@ -293,6 +309,33 @@ export default function Settings() {
                 />
                 <p className="text-xs text-muted-foreground">Customers can use this to waive delivery fee</p>
               </div>
+            </div>
+
+            {/* Promo Settings */}
+            <div className="pt-4 border-t">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Gift className="w-4 h-4 text-primary" />
+                  <Label className="text-base font-medium">Free Delivery Promo</Label>
+                </div>
+                <Switch
+                  checked={promoEnabled}
+                  onCheckedChange={setPromoEnabled}
+                />
+              </div>
+              {promoEnabled && (
+                <div className="space-y-2">
+                  <Label htmlFor="promoMessage">Promo Message</Label>
+                  <Textarea
+                    id="promoMessage"
+                    placeholder="Like & follow us for FREE delivery!"
+                    value={promoMessage}
+                    onChange={(e) => setPromoMessage(e.target.value)}
+                    rows={2}
+                  />
+                  <p className="text-xs text-muted-foreground">This message shows at checkout when promo code is available</p>
+                </div>
+              )}
             </div>
 
             {/* Shipping Settings (outside delivery areas) */}

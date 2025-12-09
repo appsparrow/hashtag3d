@@ -23,6 +23,8 @@ export default function Checkout() {
   const { data: promoCodeSetting } = useLocalSetting("free_delivery_promo_code");
   const { data: freeShippingThresholdSetting } = useLocalSetting("free_shipping_threshold");
   const { data: shippingFeeSetting } = useLocalSetting("shipping_fee");
+  const { data: promoEnabledSetting } = useLocalSetting("promo_enabled");
+  const { data: promoMessageSetting } = useLocalSetting("promo_message");
   const createOrder = useCreateOrder();
 
   const currencySymbol = (currencySymbolSetting?.setting_value as string) || "$";
@@ -30,6 +32,8 @@ export default function Checkout() {
   const validPromoCode = ((promoCodeSetting?.setting_value as string) || "").toUpperCase();
   const freeShippingThreshold = (freeShippingThresholdSetting?.setting_value as number) || 15;
   const baseShippingFee = (shippingFeeSetting?.setting_value as number) || 8;
+  const promoEnabled = promoEnabledSetting?.setting_value !== false;
+  const promoMessage = (promoMessageSetting?.setting_value as string) || "Like & follow us on Instagram/TikTok for FREE delivery! Limited time offer.";
 
   const [formData, setFormData] = useState({
     name: "",
@@ -351,14 +355,14 @@ export default function Checkout() {
               </div>
             )}
 
-            {/* Step 4: Promo Code (only for local delivery) */}
-            {fulfillmentType === "delivery" && !promoApplied && validPromoCode && (
+            {/* Step 4: Promo Code (only for local delivery when promo is enabled) */}
+            {fulfillmentType === "delivery" && !promoApplied && validPromoCode && promoEnabled && (
               <div className="p-6 rounded-xl border bg-card space-y-4">
                 <h2 className="text-lg font-semibold text-foreground">4. Promo Code</h2>
                 <div className="p-4 rounded-lg bg-primary/5 border border-primary/10">
                   <p className="text-sm text-foreground mb-3">
-                    🎁 <strong>Want FREE delivery today?</strong><br/>
-                    Follow us on Instagram/TikTok and use code: <code className="bg-primary/10 px-2 py-0.5 rounded font-mono">{validPromoCode}</code>
+                    🎁 <strong>{promoMessage}</strong><br/>
+                    Use code: <code className="bg-primary/10 px-2 py-0.5 rounded font-mono">{validPromoCode}</code>
                   </p>
                   <div className="flex gap-2">
                     <Input
