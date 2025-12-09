@@ -89,9 +89,6 @@ export default function ProductDetail() {
     if (!product || pricingSettings.length === 0) return 0;
 
     const basePrice = Number(product.price);
-    const materialUpcharge = selectedMaterial === "standard" ? 0 
-      : selectedMaterial === "premium" ? getSetting("material_premium_upcharge")
-      : getSetting("material_ultra_upcharge");
     const sizeUpcharge = getSetting(`size_${selectedSize}_upcharge`);
     
     let colorUpcharge = 0;
@@ -106,10 +103,12 @@ export default function ProductDetail() {
     const amsFee = numColors > 1 
       ? getSetting("ams_base_fee") + (numColors - 1) * getSetting("ams_per_color_fee")
       : 0;
-    const customizationFee = product.is_customizable && customization ? 2 : 0;
 
-    return basePrice + materialUpcharge + sizeUpcharge + colorUpcharge + amsFee + customizationFee;
-  }, [product, selectedMaterial, selectedSize, selectedColorsArray, customization, pricingSettings, dbColors]);
+    return basePrice + sizeUpcharge + colorUpcharge + amsFee;
+  }, [product, selectedSize, selectedColorsArray, pricingSettings, dbColors]);
+
+  // Validation: customization required for customizable products
+  const isCustomizationValid = !product?.is_customizable || customization.trim().length > 0;
 
   const handleColorChange = (slotId: string, colorName: string) => {
     setColorSelections(prev => ({ ...prev, [slotId]: colorName }));
@@ -197,24 +196,6 @@ export default function ProductDetail() {
             </div>
 
             <div className="space-y-4 pt-4 border-t">
-              {/* Material Selection */}
-              {allowedMaterials.length > 1 && (
-                <div className="space-y-2">
-                  <Label>Material</Label>
-                  <Select value={selectedMaterial} onValueChange={setSelectedMaterial}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {allowedMaterials.includes("standard") && <SelectItem value="standard">Standard</SelectItem>}
-                      {allowedMaterials.includes("premium") && (
-                        <SelectItem value="premium">Premium (+{currencySymbol}{getSetting("material_premium_upcharge")})</SelectItem>
-                      )}
-                      {allowedMaterials.includes("ultra") && (
-                        <SelectItem value="ultra">Ultra (+{currencySymbol}{getSetting("material_ultra_upcharge")})</SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
 
               {/* Size Selection */}
               {allowedSizes.length > 0 && (
@@ -324,12 +305,19 @@ export default function ProductDetail() {
               {/* Customization */}
               {product.is_customizable && (
                 <div className="space-y-2">
-                  <Label>Customization (+{currencySymbol}2)</Label>
+                  <Label>Customization <span className="text-destructive">*</span></Label>
+                  {product.personalization_options && (
+                    <p className="text-sm text-muted-foreground">{product.personalization_options}</p>
+                  )}
                   <Input
                     value={customization}
                     onChange={(e) => setCustomization(e.target.value)}
-                    placeholder={product.personalization_options || "Enter details..."}
+                    placeholder="Enter your customization details..."
+                    className={!isCustomizationValid ? "border-destructive" : ""}
                   />
+                  {!isCustomizationValid && (
+                    <p className="text-sm text-destructive">Customization is required for this product</p>
+                  )}
                 </div>
               )}
             </div>
@@ -346,7 +334,12 @@ export default function ProductDetail() {
                 </Button>
               </div>
 
-              <Button className="flex-1" size="lg" onClick={handleAddToCart}>
+              <Button 
+                className="flex-1" 
+                size="lg" 
+                onClick={handleAddToCart}
+                disabled={!isCustomizationValid}
+              >
                 <ShoppingCart className="w-5 h-5 mr-2" />
                 Add to Cart - {currencySymbol}{(unitPrice * quantity).toFixed(2)}
               </Button>
