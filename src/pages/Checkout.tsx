@@ -1,11 +1,12 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Copy, Truck, MapPin, Tag, PartyPopper, Package } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Copy, Truck, MapPin, Tag, PartyPopper, Package, Instagram, Youtube, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useCart } from "@/contexts/CartContext";
 import { useDeliveryAreas, useLocalSetting } from "@/hooks/useLocalSettings";
 import { useCreateOrder } from "@/hooks/useOrders";
@@ -25,6 +26,10 @@ export default function Checkout() {
   const { data: shippingFeeSetting } = useLocalSetting("shipping_fee");
   const { data: promoEnabledSetting } = useLocalSetting("promo_enabled");
   const { data: promoMessageSetting } = useLocalSetting("promo_message");
+  const { data: instagramSetting } = useLocalSetting("instagram_url");
+  const { data: tiktokSetting } = useLocalSetting("tiktok_url");
+  const { data: youtubeSetting } = useLocalSetting("youtube_url");
+  const { data: defaultCountrySetting } = useLocalSetting("default_country");
   const createOrder = useCreateOrder();
 
   const currencySymbol = (currencySymbolSetting?.setting_value as string) || "$";
@@ -34,28 +39,50 @@ export default function Checkout() {
   const baseShippingFee = (shippingFeeSetting?.setting_value as number) || 8;
   const promoEnabled = promoEnabledSetting?.setting_value !== false;
   const promoMessage = (promoMessageSetting?.setting_value as string) || "Like & follow us on Instagram/TikTok for FREE delivery! Limited time offer.";
+  const instagramUrl = (instagramSetting?.setting_value as string) || "";
+  const tiktokUrl = (tiktokSetting?.setting_value as string) || "";
+  const youtubeUrl = (youtubeSetting?.setting_value as string) || "";
+  const defaultCountry = (defaultCountrySetting?.setting_value as string) || "United States";
 
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
-    address: "",
+    addressLine1: "",
+    city: "",
+    state: "",
+    country: "United States",
     notes: "",
   });
+  const [followedForFreeShipping, setFollowedForFreeShipping] = useState(false);
   const [fulfillmentType, setFulfillmentType] = useState<FulfillmentType>("pickup");
   const [promoCode, setPromoCode] = useState("");
   const [promoApplied, setPromoApplied] = useState(false);
+
+  // Set default country from settings
+  useEffect(() => {
+    if (defaultCountry && formData.country === "United States") {
+      setFormData(prev => ({ ...prev, country: defaultCountry }));
+    }
+  }, [defaultCountry]);
   const [orderNumbers, setOrderNumbers] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Compute full address from parts
+  const fullAddress = useMemo(() => {
+    const parts = [formData.addressLine1, formData.city, formData.state, formData.country].filter(Boolean);
+    return parts.join(", ");
+  }, [formData.addressLine1, formData.city, formData.state, formData.country]);
+
   // Auto-detect if address is in delivery zone
   const detectedZone = useMemo(() => {
-    if (!formData.address || !deliveryAreas) return null;
-    const addressLower = formData.address.toLowerCase();
+    if (!formData.city || !deliveryAreas) return null;
+    const cityLower = formData.city.toLowerCase();
     return deliveryAreas.find(area => 
-      addressLower.includes(area.toLowerCase().split(",")[0].toLowerCase())
+      cityLower.includes(area.toLowerCase().split(",")[0].toLowerCase()) ||
+      area.toLowerCase().split(",")[0].toLowerCase().includes(cityLower)
     ) || null;
-  }, [formData.address, deliveryAreas]);
+  }, [formData.city, deliveryAreas]);
 
   const isInDeliveryArea = !!detectedZone;
 
@@ -63,22 +90,29 @@ export default function Checkout() {
   useEffect(() => {
     if (isInDeliveryArea) {
       setFulfillmentType("pickup");
-    } else if (formData.address.length > 5) {
+    } else if (formData.city.length > 2) {
       setFulfillmentType("shipping");
     }
-  }, [isInDeliveryArea, formData.address]);
+  }, [isInDeliveryArea, formData.city]);
+
+  // Apply free shipping when user confirms they followed
+  useEffect(() => {
+    if (followedForFreeShipping && fulfillmentType === "delivery") {
+      setPromoApplied(true);
+    }
+  }, [followedForFreeShipping, fulfillmentType]);
 
   const subtotal = items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
   
   const shippingCost = useMemo(() => {
     if (fulfillmentType === "pickup") return 0;
     if (fulfillmentType === "delivery") {
-      return promoApplied ? 0 : deliveryFee;
+      return (promoApplied || followedForFreeShipping) ? 0 : deliveryFee;
     }
     // Shipping - check free threshold
     if (subtotal >= freeShippingThreshold) return 0;
     return baseShippingFee;
-  }, [fulfillmentType, promoApplied, deliveryFee, subtotal, freeShippingThreshold, baseShippingFee]);
+  }, [fulfillmentType, promoApplied, followedForFreeShipping, deliveryFee, subtotal, freeShippingThreshold, baseShippingFee]);
 
   const total = subtotal + shippingCost;
 
@@ -104,7 +138,7 @@ export default function Checkout() {
           const deliveryLocation = detectedZone || "Shipping";
           const deliveryAddress = fulfillmentType === "pickup" 
             ? `PICKUP - ${detectedZone}` 
-            : formData.address;
+            : fullAddress;
 
           const result = await createOrder.mutateAsync({
             product_id: item.product_id,
@@ -184,7 +218,7 @@ export default function Checkout() {
     return null;
   }
 
-  const canSubmit = formData.name && formData.email && formData.address;
+  const canSubmit = formData.name && formData.email && formData.addressLine1 && formData.city && formData.state;
 
   return (
     <div className="min-h-screen bg-background">
@@ -238,21 +272,54 @@ export default function Checkout() {
 
             {/* Step 2: Address (Auto-detect) */}
             <div className="p-6 rounded-xl border bg-card space-y-4">
-              <h2 className="text-lg font-semibold text-foreground">2. Your Address</h2>
-              <div className="space-y-2">
-                <Label htmlFor="address">Full Address *</Label>
-                <Input
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  placeholder="123 Main St, City, State ZIP"
-                  required
-                />
-                <p className="text-xs text-muted-foreground">We'll auto-detect your delivery options</p>
+              <h2 className="text-lg font-semibold text-foreground">2. Delivery Address</h2>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="addressLine1">Address Line 1 *</Label>
+                  <Input
+                    id="addressLine1"
+                    value={formData.addressLine1}
+                    onChange={(e) => setFormData({ ...formData, addressLine1: e.target.value })}
+                    placeholder="123 Main Street"
+                    required
+                  />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="city">City *</Label>
+                    <Input
+                      id="city"
+                      value={formData.city}
+                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                      placeholder="Atlanta"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="state">State *</Label>
+                    <Input
+                      id="state"
+                      value={formData.state}
+                      onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                      placeholder="GA"
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="country">Country</Label>
+                  <Input
+                    id="country"
+                    value={formData.country}
+                    onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                    placeholder="United States"
+                  />
+                  <p className="text-xs text-muted-foreground">We currently deliver only in {defaultCountry}</p>
+                </div>
               </div>
 
               {/* Auto-detection message */}
-              {formData.address.length > 5 && (
+              {formData.city.length > 2 && (
                 <>
                   {isInDeliveryArea ? (
                     <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20 flex items-start gap-3">
@@ -286,7 +353,7 @@ export default function Checkout() {
             </div>
 
             {/* Step 3: Delivery Options (only show after address entered) */}
-            {formData.address.length > 5 && (
+            {formData.city.length > 2 && (
               <div className="p-6 rounded-xl border bg-card space-y-4">
                 <h2 className="text-lg font-semibold text-foreground">3. Delivery Option</h2>
                 
@@ -355,39 +422,97 @@ export default function Checkout() {
               </div>
             )}
 
-            {/* Step 4: Promo Code (only for local delivery when promo is enabled) */}
-            {fulfillmentType === "delivery" && !promoApplied && validPromoCode && promoEnabled && (
+            {/* Step 4: Free Shipping Promo (only for local delivery when promo is enabled) */}
+            {fulfillmentType === "delivery" && !promoApplied && promoEnabled && (
               <div className="p-6 rounded-xl border bg-card space-y-4">
-                <h2 className="text-lg font-semibold text-foreground">4. Promo Code</h2>
-                <div className="p-4 rounded-lg bg-primary/5 border border-primary/10">
-                  <p className="text-sm text-foreground mb-3">
-                    🎁 <strong>{promoMessage}</strong><br/>
-                    Use code: <code className="bg-primary/10 px-2 py-0.5 rounded font-mono">{validPromoCode}</code>
+                <h2 className="text-lg font-semibold text-foreground">4. Get FREE Delivery!</h2>
+                <div className="p-4 rounded-lg bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20">
+                  <p className="text-foreground mb-4">
+                    🎉 <strong>One-time FREE delivery offer!</strong><br/>
+                    <span className="text-sm text-muted-foreground">Like & subscribe to any of our channels and get free delivery today!</span>
                   </p>
-                  <div className="flex gap-2">
-                    <Input
-                      value={promoCode}
-                      onChange={(e) => setPromoCode(e.target.value)}
-                      placeholder="Enter promo code"
+                  
+                  {/* Social Media Icons */}
+                  <div className="flex items-center gap-3 mb-4">
+                    {instagramUrl && (
+                      <a 
+                        href={instagramUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="p-3 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 text-white hover:scale-110 transition-transform"
+                      >
+                        <Instagram className="w-6 h-6" />
+                      </a>
+                    )}
+                    {tiktokUrl && (
+                      <a 
+                        href={tiktokUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="p-3 rounded-lg bg-black text-white hover:scale-110 transition-transform"
+                      >
+                        <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+                        </svg>
+                      </a>
+                    )}
+                    {youtubeUrl && (
+                      <a 
+                        href={youtubeUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="p-3 rounded-lg bg-red-600 text-white hover:scale-110 transition-transform"
+                      >
+                        <Youtube className="w-6 h-6" />
+                      </a>
+                    )}
+                  </div>
+
+                  {/* Checkbox confirmation */}
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-background/50 border">
+                    <Checkbox 
+                      id="followedConfirmation"
+                      checked={followedForFreeShipping}
+                      onCheckedChange={(checked) => setFollowedForFreeShipping(checked === true)}
+                      className="mt-0.5"
                     />
-                    <Button type="button" variant="outline" onClick={handleApplyPromo}>
-                      <Tag className="w-4 h-4 mr-2" />
-                      Apply
-                    </Button>
+                    <Label htmlFor="followedConfirmation" className="text-sm cursor-pointer leading-relaxed">
+                      <span className="font-semibold text-primary">Yes!! I just did!</span> I liked & subscribed on one of the channels above. I want my FREE delivery! 🎁
+                    </Label>
                   </div>
                 </div>
+
+                {/* Manual promo code option */}
+                {validPromoCode && (
+                  <div className="pt-4 border-t">
+                    <p className="text-xs text-muted-foreground mb-2">Or enter promo code manually:</p>
+                    <div className="flex gap-2">
+                      <Input
+                        value={promoCode}
+                        onChange={(e) => setPromoCode(e.target.value)}
+                        placeholder="Enter promo code"
+                        className="text-sm"
+                      />
+                      <Button type="button" variant="outline" size="sm" onClick={handleApplyPromo}>
+                        <Tag className="w-4 h-4 mr-1" />
+                        Apply
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
-            {promoApplied && (
-              <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400">
-                ✓ Promo code applied! Delivery fee waived.
+            {(promoApplied || followedForFreeShipping) && fulfillmentType === "delivery" && (
+              <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400 flex items-center gap-2">
+                <Check className="w-5 h-5" />
+                <span>{followedForFreeShipping ? "Thanks for following us! FREE delivery applied! 🎉" : "Promo code applied! Delivery fee waived."}</span>
               </div>
             )}
 
             {/* Step 5: Order Notes */}
             <div className="p-6 rounded-xl border bg-card space-y-4">
-              <h2 className="text-lg font-semibold text-foreground">{fulfillmentType === "delivery" && !promoApplied && validPromoCode ? "5" : "4"}. Any Special Instructions?</h2>
+              <h2 className="text-lg font-semibold text-foreground">{fulfillmentType === "delivery" && promoEnabled ? "5" : "4"}. Any Special Instructions?</h2>
               <Textarea
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
