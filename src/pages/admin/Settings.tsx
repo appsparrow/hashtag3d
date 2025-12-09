@@ -29,6 +29,8 @@ export default function Settings() {
   const { data: businessCurrencySetting } = useLocalSetting("business_currency");
   const { data: businessEmailSetting } = useLocalSetting("business_email");
   const { data: businessPhoneSetting } = useLocalSetting("business_phone");
+  const { data: deliveryFeeSetting } = useLocalSetting("delivery_fee");
+  const { data: promoCodeSetting } = useLocalSetting("free_delivery_promo_code");
   const updateSetting = useUpdateLocalSetting();
   
   const [areas, setAreas] = useState<string[]>([]);
@@ -40,6 +42,8 @@ export default function Settings() {
   const [businessCurrency, setBusinessCurrency] = useState("USD");
   const [businessEmail, setBusinessEmail] = useState("");
   const [businessPhone, setBusinessPhone] = useState("");
+  const [deliveryFee, setDeliveryFee] = useState("5.00");
+  const [promoCode, setPromoCode] = useState("");
 
   useEffect(() => {
     if (deliveryAreas) setAreas(deliveryAreas);
@@ -73,6 +77,14 @@ export default function Settings() {
     if (businessPhoneSetting?.setting_value) setBusinessPhone(businessPhoneSetting.setting_value as string);
   }, [businessPhoneSetting]);
 
+  useEffect(() => {
+    if (deliveryFeeSetting?.setting_value !== undefined) setDeliveryFee(String(deliveryFeeSetting.setting_value));
+  }, [deliveryFeeSetting]);
+
+  useEffect(() => {
+    if (promoCodeSetting?.setting_value) setPromoCode(promoCodeSetting.setting_value as string);
+  }, [promoCodeSetting]);
+
   const handleAddArea = () => {
     if (newArea.trim() && !areas.includes(newArea.trim())) {
       setAreas([...areas, newArea.trim()]);
@@ -84,7 +96,11 @@ export default function Settings() {
     setAreas(areas.filter((a) => a !== area));
   };
 
-  const handleSaveAreas = () => updateSetting.mutateAsync({ key: "delivery_areas", value: areas });
+  const handleSaveDeliverySettings = async () => {
+    await updateSetting.mutateAsync({ key: "delivery_areas", value: areas });
+    await updateSetting.mutateAsync({ key: "delivery_fee", value: parseFloat(deliveryFee) || 5.00 });
+    await updateSetting.mutateAsync({ key: "free_delivery_promo_code", value: promoCode.toUpperCase() });
+  };
   const handleSaveInstagram = () => updateSetting.mutateAsync({ key: "instagram_url", value: instagramUrl });
   const handleSaveYoutube = () => updateSetting.mutateAsync({ key: "youtube_url", value: youtubeUrl });
   
@@ -199,42 +215,73 @@ export default function Settings() {
           </CardContent>
         </Card>
 
-        {/* Delivery Areas */}
+        {/* Delivery Areas & Shipping */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MapPin className="w-5 h-5 text-primary" />
-              Delivery Areas
+              Delivery Areas & Shipping
             </CardTitle>
-            <CardDescription>Manage the areas you deliver to.</CardDescription>
+            <CardDescription>Manage pickup/delivery areas, shipping fees, and promo codes.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-wrap gap-2">
-              {areas.map((area) => (
-                <Badge key={area} variant="secondary" className="px-3 py-1 text-sm">
-                  {area}
-                  <button onClick={() => handleRemoveArea(area)} className="ml-2 hover:text-destructive">
-                    <X className="w-3 h-3" />
-                  </button>
-                </Badge>
-              ))}
+          <CardContent className="space-y-6">
+            {/* Areas */}
+            <div className="space-y-4">
+              <Label>Pickup/Delivery Areas (Free pickup available)</Label>
+              <div className="flex flex-wrap gap-2">
+                {areas.map((area) => (
+                  <Badge key={area} variant="secondary" className="px-3 py-1 text-sm">
+                    {area}
+                    <button onClick={() => handleRemoveArea(area)} className="ml-2 hover:text-destructive">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Add new area (e.g., Johns Creek, GA)"
+                  value={newArea}
+                  onChange={(e) => setNewArea(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddArea()}
+                />
+                <Button onClick={handleAddArea} variant="outline">
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
 
-            <div className="flex gap-2">
-              <Input
-                placeholder="Add new area (e.g., Johns Creek, GA)"
-                value={newArea}
-                onChange={(e) => setNewArea(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleAddArea()}
-              />
-              <Button onClick={handleAddArea} variant="outline">
-                <Plus className="w-4 h-4" />
-              </Button>
+            {/* Delivery Fee & Promo Code */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="deliveryFee">
+                  <DollarSign className="w-4 h-4 inline mr-1" />
+                  Delivery Fee (for above areas)
+                </Label>
+                <Input
+                  id="deliveryFee"
+                  type="number"
+                  step="0.01"
+                  placeholder="5.00"
+                  value={deliveryFee}
+                  onChange={(e) => setDeliveryFee(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="promoCode">Free Delivery Promo Code</Label>
+                <Input
+                  id="promoCode"
+                  placeholder="LIKE-FOLLOW-SUBSCRIBE"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value)}
+                />
+              </div>
             </div>
 
-            <Button onClick={handleSaveAreas} disabled={updateSetting.isPending}>
+            <Button onClick={handleSaveDeliverySettings} disabled={updateSetting.isPending}>
               {updateSetting.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              Save Delivery Areas
+              Save Delivery Settings
             </Button>
           </CardContent>
         </Card>
