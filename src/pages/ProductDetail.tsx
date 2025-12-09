@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useProducts } from "@/hooks/useProducts";
-import { usePricingSettings, useColors, MaterialCategory } from "@/hooks/usePricing";
+import { usePricingSettings, useColors, useMaterials, MaterialCategory } from "@/hooks/usePricing";
 import { useLocalSetting } from "@/hooks/useLocalSettings";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "@/hooks/use-toast";
@@ -30,6 +30,7 @@ export default function ProductDetail() {
   const { data: products, isLoading } = useProducts();
   const { data: pricingSettings = [] } = usePricingSettings();
   const { data: dbColors = [] } = useColors();
+  const { data: materials = [] } = useMaterials();
   const { data: currencySymbolSetting } = useLocalSetting("business_currency_symbol");
   const { addToCart } = useCart();
 
@@ -69,6 +70,22 @@ export default function ProductDetail() {
 
   const getSetting = (key: string) => pricingSettings.find(s => s.setting_key === key)?.setting_value || 0;
 
+  // Get cost_per_gram for the selected material category (determined by color selection)
+  const getMaterialCostPerGram = (category: MaterialCategory) => {
+    const mat = materials.find(m => m.category === category);
+    return mat?.cost_per_gram || (category === 'standard' ? 0.03 : category === 'premium' ? 0.05 : 0.08);
+  };
+
+  // Get estimated grams for the selected size
+  const getGramsForSize = (size: string) => {
+    if (!product) return 0;
+    const prod = product as any;
+    if (size === 'small') return prod.estimated_grams_small || 0;
+    if (size === 'medium') return prod.estimated_grams_medium || 0;
+    if (size === 'large') return prod.estimated_grams_large || 0;
+    return 0;
+  };
+
   const availableColors = useMemo(() => {
     if (!product?.colors || !dbColors.length) return { standard: [], premium: [], ultra: [] };
     return dbColors
@@ -85,12 +102,28 @@ export default function ProductDetail() {
     return Object.values(colorSelections).filter(c => c);
   }, [colorSelections]);
 
+  // Determine the highest material category from selected colors
+  const selectedMaterialCategory = useMemo((): MaterialCategory => {
+    let highest: MaterialCategory = 'standard';
+    selectedColorsArray.forEach(colorName => {
+      const color = dbColors.find(c => c.name === colorName);
+      if (color?.material?.category === 'ultra') highest = 'ultra';
+      else if (color?.material?.category === 'premium' && highest !== 'ultra') highest = 'premium';
+    });
+    return highest;
+  }, [selectedColorsArray, dbColors]);
+
   const unitPrice = useMemo(() => {
     if (!product || pricingSettings.length === 0) return 0;
 
     const basePrice = Number(product.price);
-    const sizeUpcharge = getSetting(`size_${selectedSize}_upcharge`);
     
+    // Size-based pricing: grams × cost_per_gram for the material category
+    const gramsForSize = getGramsForSize(selectedSize);
+    const costPerGram = getMaterialCostPerGram(selectedMaterialCategory);
+    const sizeMaterialCost = gramsForSize * costPerGram;
+    
+    // Color upcharges (flat fee per premium/ultra color)
     let colorUpcharge = 0;
     selectedColorsArray.forEach(colorName => {
       if (!colorName) return;
@@ -104,8 +137,8 @@ export default function ProductDetail() {
       ? getSetting("ams_base_fee") + (numColors - 1) * getSetting("ams_per_color_fee")
       : 0;
 
-    return basePrice + sizeUpcharge + colorUpcharge + amsFee;
-  }, [product, selectedSize, selectedColorsArray, pricingSettings, dbColors]);
+    return basePrice + sizeMaterialCost + colorUpcharge + amsFee;
+  }, [product, selectedSize, selectedColorsArray, pricingSettings, dbColors, materials, selectedMaterialCategory]);
 
   // Validation: customization required for customizable products
   const isCustomizationValid = !product?.is_customizable || customization.trim().length > 0;
@@ -205,16 +238,17 @@ export default function ProductDetail() {
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {allowedSizes.includes("small") && (
-                        <SelectItem value="small">Small {getSetting("size_small_upcharge") > 0 ? `(+${currencySymbol}${getSetting("size_small_upcharge")})` : ""}</SelectItem>
+                        <SelectItem value="small">Small</SelectItem>
                       )}
                       {allowedSizes.includes("medium") && (
-                        <SelectItem value="medium">Medium (+{currencySymbol}{getSetting("size_medium_upcharge")})</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
                       )}
                       {allowedSizes.includes("large") && (
-                        <SelectItem value="large">Large (+{currencySymbol}{getSetting("size_large_upcharge")})</SelectItem>
+                        <SelectItem value="large">Large</SelectItem>
                       )}
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground">Size affects pricing based on material used</p>
                 </div>
               )}
 

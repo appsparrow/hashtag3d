@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calculator, DollarSign, TrendingUp, TrendingDown, Percent, Package } from "lucide-react";
+import { Calculator, TrendingUp, TrendingDown, Percent, Package } from "lucide-react";
 import { usePricingSettings, useMaterials } from "@/hooks/usePricing";
 
 interface ProductPricingPanelProps {
@@ -10,9 +10,9 @@ interface ProductPricingPanelProps {
   allowedSizes: string[];
   numColors: number;
   isCustomizable: boolean;
-  estimatedGramsStandard?: number;
-  estimatedGramsPremium?: number;
-  estimatedGramsUltra?: number;
+  estimatedGramsSmall?: number;
+  estimatedGramsMedium?: number;
+  estimatedGramsLarge?: number;
   accessoriesCost?: number;
 }
 
@@ -22,9 +22,9 @@ export function ProductPricingPanel({
   allowedSizes,
   numColors,
   isCustomizable,
-  estimatedGramsStandard = 0,
-  estimatedGramsPremium = 0,
-  estimatedGramsUltra = 0,
+  estimatedGramsSmall = 0,
+  estimatedGramsMedium = 0,
+  estimatedGramsLarge = 0,
   accessoriesCost = 0,
 }: ProductPricingPanelProps) {
   const { data: pricingSettings } = usePricingSettings();
@@ -34,7 +34,7 @@ export function ProductPricingPanel({
     return pricingSettings?.find(s => s.setting_key === key)?.setting_value || 0;
   };
 
-  // Get cost per gram for each material category
+  // Get cost per gram for each material category from DB
   const materialCostPerGram = useMemo(() => {
     if (!materials) return { standard: 0.03, premium: 0.05, ultra: 0.08 };
     
@@ -50,71 +50,54 @@ export function ProductPricingPanel({
     };
   }, [materials]);
 
+  // Gram estimates per size
+  const gramsPerSize = useMemo(() => ({
+    small: estimatedGramsSmall,
+    medium: estimatedGramsMedium,
+    large: estimatedGramsLarge,
+  }), [estimatedGramsSmall, estimatedGramsMedium, estimatedGramsLarge]);
+
   const priceRange = useMemo(() => {
     if (!pricingSettings) return null;
 
-    // Material upcharges
-    const materialUpcharges = {
-      standard: 0,
-      premium: getUpcharge('material_premium_upcharge'),
-      ultra: getUpcharge('material_ultra_upcharge'),
-    };
-
-    // Size upcharges
-    const sizeUpcharges = {
-      small: getUpcharge('size_small_upcharge'),
-      medium: getUpcharge('size_medium_upcharge'),
-      large: getUpcharge('size_large_upcharge'),
-    };
-
-    // Color category upcharges
+    // Color category upcharges (flat per color)
     const colorPremiumUpcharge = getUpcharge('color_premium_upcharge');
     const colorUltraUpcharge = getUpcharge('color_ultra_upcharge');
 
     // AMS fee for multiple colors
-    const amsFeePerColor = getUpcharge('ams_fee_per_color');
-    const amsFee = numColors > 1 ? (numColors - 1) * amsFeePerColor : 0;
+    const amsBaseFee = getUpcharge('ams_base_fee');
+    const amsPerColorFee = getUpcharge('ams_per_color_fee');
+    const amsFee = numColors > 1 ? amsBaseFee + (numColors - 1) * amsPerColorFee : 0;
 
-    // Customization fee
-    const customizationFee = isCustomizable ? getUpcharge('customization_fee') : 0;
+    // Calculate material cost based on size and material category
+    // Price = basePrice + (grams for size × cost_per_gram for material) + color upcharges + AMS fee
+    const calculatePrice = (size: string, materialCategory: string, colorUpcharge: number) => {
+      const grams = gramsPerSize[size as keyof typeof gramsPerSize] || 0;
+      const costPerGram = materialCostPerGram[materialCategory as keyof typeof materialCostPerGram] || 0.03;
+      const sizeMaterialCost = grams * costPerGram;
+      return basePrice + sizeMaterialCost + colorUpcharge + amsFee;
+    };
 
-    // Calculate min price (smallest material + smallest size + standard colors)
-    const minMaterialUpcharge = Math.min(
-      ...allowedMaterials.map(m => materialUpcharges[m as keyof typeof materialUpcharges] || 0)
-    );
-    const minSizeUpcharge = Math.min(
-      ...allowedSizes.map(s => sizeUpcharges[s as keyof typeof sizeUpcharges] || 0)
-    );
-    const minPrice = basePrice + minMaterialUpcharge + minSizeUpcharge + amsFee;
+    // Find min price (smallest size + standard material + no color upcharge)
+    const smallestSize = allowedSizes.includes('small') ? 'small' : allowedSizes.includes('medium') ? 'medium' : 'large';
+    const minPrice = calculatePrice(smallestSize, 'standard', 0);
 
-    // Calculate max price (largest material + largest size + ultra colors)
-    const maxMaterialUpcharge = Math.max(
-      ...allowedMaterials.map(m => materialUpcharges[m as keyof typeof materialUpcharges] || 0)
-    );
-    const maxSizeUpcharge = Math.max(
-      ...allowedSizes.map(s => sizeUpcharges[s as keyof typeof sizeUpcharges] || 0)
-    );
-    // Max color upcharge (assuming customer picks ultra colors for all selections)
+    // Find max price (largest size + highest material tier available + ultra colors)
+    const largestSize = allowedSizes.includes('large') ? 'large' : allowedSizes.includes('medium') ? 'medium' : 'small';
+    const maxMaterial = allowedMaterials.includes('ultra') ? 'ultra' : allowedMaterials.includes('premium') ? 'premium' : 'standard';
     const maxColorUpcharge = numColors * colorUltraUpcharge;
-    const maxPrice = basePrice + maxMaterialUpcharge + maxSizeUpcharge + amsFee + maxColorUpcharge + customizationFee;
+    const maxPrice = calculatePrice(largestSize, maxMaterial, maxColorUpcharge);
 
-    // Calculate material costs based on estimated grams
+    // Calculate material costs for display
     const materialCosts = {
-      standard: (estimatedGramsStandard * materialCostPerGram.standard) + accessoriesCost,
-      premium: (estimatedGramsPremium * materialCostPerGram.premium) + accessoriesCost,
-      ultra: (estimatedGramsUltra * materialCostPerGram.ultra) + accessoriesCost,
+      small: (estimatedGramsSmall * materialCostPerGram.standard) + accessoriesCost,
+      medium: (estimatedGramsMedium * materialCostPerGram.standard) + accessoriesCost,
+      large: (estimatedGramsLarge * materialCostPerGram.standard) + accessoriesCost,
     };
 
     // Calculate profit margins
-    const minMaterialKey = allowedMaterials.reduce((min, curr) => 
-      (materialUpcharges[curr as keyof typeof materialUpcharges] || 0) < (materialUpcharges[min as keyof typeof materialUpcharges] || 0) ? curr : min
-    );
-    const maxMaterialKey = allowedMaterials.reduce((max, curr) => 
-      (materialUpcharges[curr as keyof typeof materialUpcharges] || 0) > (materialUpcharges[max as keyof typeof materialUpcharges] || 0) ? curr : max
-    );
-
-    const minCost = materialCosts[minMaterialKey as keyof typeof materialCosts] || 0;
-    const maxCost = materialCosts[maxMaterialKey as keyof typeof materialCosts] || 0;
+    const minCost = materialCosts[smallestSize as keyof typeof materialCosts] || 0;
+    const maxCost = materialCosts[largestSize as keyof typeof materialCosts] || 0;
     
     const minProfit = minPrice - minCost;
     const maxProfit = maxPrice - maxCost;
@@ -126,11 +109,6 @@ export function ProductPricingPanel({
       max: maxPrice,
       basePrice,
       amsFee,
-      customizationFee,
-      minMaterialUpcharge,
-      maxMaterialUpcharge,
-      minSizeUpcharge,
-      maxSizeUpcharge,
       maxColorUpcharge,
       materialCosts,
       minCost,
@@ -139,8 +117,10 @@ export function ProductPricingPanel({
       maxProfit,
       minProfitMargin,
       maxProfitMargin,
+      smallestSize,
+      largestSize,
     };
-  }, [basePrice, allowedMaterials, allowedSizes, numColors, isCustomizable, pricingSettings, estimatedGramsStandard, estimatedGramsPremium, estimatedGramsUltra, accessoriesCost, materialCostPerGram]);
+  }, [basePrice, allowedMaterials, allowedSizes, numColors, pricingSettings, gramsPerSize, materialCostPerGram, accessoriesCost, estimatedGramsSmall, estimatedGramsMedium, estimatedGramsLarge]);
 
   if (!priceRange) {
     return (
@@ -156,7 +136,7 @@ export function ProductPricingPanel({
   }
 
   const hasRange = priceRange.min !== priceRange.max;
-  const hasCostData = estimatedGramsStandard > 0 || estimatedGramsPremium > 0 || estimatedGramsUltra > 0;
+  const hasCostData = estimatedGramsSmall > 0 || estimatedGramsMedium > 0 || estimatedGramsLarge > 0;
 
   return (
     <Card className="sticky top-4 border-primary/20 shadow-lg">
@@ -175,7 +155,7 @@ export function ProductPricingPanel({
               <p className="text-3xl font-bold text-primary">
                 ${priceRange.min.toFixed(2)} - ${priceRange.max.toFixed(2)}
               </p>
-              <p className="text-xs text-muted-foreground">Based on customer selections</p>
+              <p className="text-xs text-muted-foreground">Based on size & material selections</p>
             </div>
           ) : (
             <p className="text-3xl font-bold text-primary">${priceRange.min.toFixed(2)}</p>
@@ -206,30 +186,30 @@ export function ProductPricingPanel({
           </div>
         )}
 
-        {/* Material Cost Breakdown - only if cost data is available */}
+        {/* Size-based Grams & Cost Breakdown */}
         {hasCostData && (
           <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900">
             <div className="flex items-center gap-2 mb-2">
               <Package className="w-4 h-4 text-amber-600" />
-              <span className="text-sm font-medium text-amber-700 dark:text-amber-400">Material Costs</span>
+              <span className="text-sm font-medium text-amber-700 dark:text-amber-400">Filament by Size</span>
             </div>
             <div className="space-y-1 text-xs">
-              {allowedMaterials.includes('standard') && estimatedGramsStandard > 0 && (
+              {allowedSizes.includes('small') && estimatedGramsSmall > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-amber-600/70 dark:text-amber-500/70">Standard ({estimatedGramsStandard}g)</span>
-                  <span className="font-medium text-amber-700 dark:text-amber-400">${priceRange.materialCosts.standard.toFixed(2)}</span>
+                  <span className="text-amber-600/70 dark:text-amber-500/70">Small ({estimatedGramsSmall}g)</span>
+                  <span className="font-medium text-amber-700 dark:text-amber-400">${priceRange.materialCosts.small.toFixed(2)} cost</span>
                 </div>
               )}
-              {allowedMaterials.includes('premium') && estimatedGramsPremium > 0 && (
+              {allowedSizes.includes('medium') && estimatedGramsMedium > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-amber-600/70 dark:text-amber-500/70">Premium ({estimatedGramsPremium}g)</span>
-                  <span className="font-medium text-amber-700 dark:text-amber-400">${priceRange.materialCosts.premium.toFixed(2)}</span>
+                  <span className="text-amber-600/70 dark:text-amber-500/70">Medium ({estimatedGramsMedium}g)</span>
+                  <span className="font-medium text-amber-700 dark:text-amber-400">${priceRange.materialCosts.medium.toFixed(2)} cost</span>
                 </div>
               )}
-              {allowedMaterials.includes('ultra') && estimatedGramsUltra > 0 && (
+              {allowedSizes.includes('large') && estimatedGramsLarge > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-amber-600/70 dark:text-amber-500/70">Ultra ({estimatedGramsUltra}g)</span>
-                  <span className="font-medium text-amber-700 dark:text-amber-400">${priceRange.materialCosts.ultra.toFixed(2)}</span>
+                  <span className="text-amber-600/70 dark:text-amber-500/70">Large ({estimatedGramsLarge}g)</span>
+                  <span className="font-medium text-amber-700 dark:text-amber-400">${priceRange.materialCosts.large.toFixed(2)} cost</span>
                 </div>
               )}
               {accessoriesCost > 0 && (
@@ -252,8 +232,8 @@ export function ProductPricingPanel({
             <p className="text-xl font-bold text-green-700 dark:text-green-400">
               ${priceRange.min.toFixed(2)}
             </p>
-            <p className="text-xs text-green-600/70 dark:text-green-500/70">
-              Standard, smallest
+            <p className="text-xs text-green-600/70 dark:text-green-500/70 capitalize">
+              {priceRange.smallestSize} size
             </p>
           </div>
           <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900">
@@ -264,8 +244,8 @@ export function ProductPricingPanel({
             <p className="text-xl font-bold text-amber-700 dark:text-amber-400">
               ${priceRange.max.toFixed(2)}
             </p>
-            <p className="text-xs text-amber-600/70 dark:text-amber-500/70">
-              Premium, largest
+            <p className="text-xs text-amber-600/70 dark:text-amber-500/70 capitalize">
+              {priceRange.largestSize} size
             </p>
           </div>
         </div>
@@ -277,23 +257,10 @@ export function ProductPricingPanel({
             <span className="font-medium">${priceRange.basePrice.toFixed(2)}</span>
           </div>
           
-          {priceRange.maxMaterialUpcharge > 0 && (
-            <div className="flex justify-between py-1">
-              <span className="text-muted-foreground">Material Upcharge</span>
-              <span className="text-amber-600">
-                +${priceRange.minMaterialUpcharge.toFixed(2)} to +${priceRange.maxMaterialUpcharge.toFixed(2)}
-              </span>
-            </div>
-          )}
-          
-          {priceRange.maxSizeUpcharge > 0 && (
-            <div className="flex justify-between py-1">
-              <span className="text-muted-foreground">Size Upcharge</span>
-              <span className="text-amber-600">
-                +${priceRange.minSizeUpcharge.toFixed(2)} to +${priceRange.maxSizeUpcharge.toFixed(2)}
-              </span>
-            </div>
-          )}
+          <div className="flex justify-between py-1">
+            <span className="text-muted-foreground">Size Pricing</span>
+            <span className="text-amber-600">grams × cost/g</span>
+          </div>
           
           {priceRange.amsFee > 0 && (
             <div className="flex justify-between py-1">
@@ -306,13 +273,6 @@ export function ProductPricingPanel({
             <div className="flex justify-between py-1">
               <span className="text-muted-foreground">Premium Color Upcharge</span>
               <span className="text-amber-600">up to +${priceRange.maxColorUpcharge.toFixed(2)}</span>
-            </div>
-          )}
-          
-          {priceRange.customizationFee > 0 && (
-            <div className="flex justify-between py-1">
-              <span className="text-muted-foreground">Customization Fee</span>
-              <span className="text-amber-600">+${priceRange.customizationFee.toFixed(2)}</span>
             </div>
           )}
         </div>

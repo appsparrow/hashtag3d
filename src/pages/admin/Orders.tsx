@@ -1,8 +1,10 @@
+import { useState, useMemo } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useOrders, useUpdateOrderStatus, OrderStatus } from "@/hooks/useOrders";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -17,9 +19,15 @@ import {
   Calendar,
   Package,
   DollarSign,
-  Truck
+  Truck,
+  Search,
+  Palette,
+  Ruler,
+  Sparkles,
+  FileText
 } from "lucide-react";
 import { format } from "date-fns";
+import defaultProductImage from "@/assets/default-product.jpg";
 
 const statusColors: Record<OrderStatus, string> = {
   pending: "bg-amber-500/10 text-amber-600 border-amber-500/20",
@@ -38,6 +46,34 @@ const statusLabels: Record<OrderStatus, string> = {
 export default function Orders() {
   const { data: orders, isLoading } = useOrders();
   const updateStatus = useUpdateOrderStatus();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  // Filter orders based on search and status
+  const filteredOrders = useMemo(() => {
+    if (!orders) return [];
+    
+    return orders.filter(order => {
+      // Status filter
+      if (statusFilter !== "all" && order.status !== statusFilter) return false;
+      
+      // Search filter
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        const matchesName = order.customer_name.toLowerCase().includes(query);
+        const matchesEmail = order.customer_email.toLowerCase().includes(query);
+        const matchesOrderNumber = order.order_number?.toLowerCase().includes(query);
+        const matchesProduct = order.products?.title?.toLowerCase().includes(query);
+        const matchesPhone = order.customer_phone?.toLowerCase().includes(query);
+        
+        if (!matchesName && !matchesEmail && !matchesOrderNumber && !matchesProduct && !matchesPhone) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+  }, [orders, searchQuery, statusFilter]);
 
   if (isLoading) {
     return (
@@ -53,158 +89,248 @@ export default function Orders() {
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Orders</h1>
-          <p className="text-muted-foreground mt-1">
-            {orders?.length ?? 0} total orders
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Orders</h1>
+            <p className="text-muted-foreground mt-1">
+              {filteredOrders.length} of {orders?.length ?? 0} orders
+            </p>
+          </div>
+        </div>
+
+        {/* Search and Filters */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, email, order #, product..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="in_progress">In Progress</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Orders List */}
-        {orders && orders.length > 0 ? (
+        {filteredOrders && filteredOrders.length > 0 ? (
           <div className="space-y-4">
-            {orders.map((order) => (
-              <Card key={order.id}>
-                <CardHeader className="pb-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-3">
-                        <CardTitle className="text-lg">
-                          {order.products?.title ?? "Unknown Product"}
-                        </CardTitle>
-                        <Badge className={`${statusColors[order.status]} border`}>
-                          {statusLabels[order.status]}
-                        </Badge>
+            {filteredOrders.map((order) => {
+              const productImage = order.products?.images?.[0] || defaultProductImage;
+              
+              return (
+                <Card key={order.id} className="overflow-hidden">
+                  <CardHeader className="pb-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex items-start gap-4">
+                        {/* Product Image */}
+                        <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted flex-shrink-0 border">
+                          <img 
+                            src={productImage} 
+                            alt={order.products?.title ?? "Product"} 
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <CardTitle className="text-lg">
+                              {order.products?.title ?? "Unknown Product"}
+                            </CardTitle>
+                            <Badge className={`${statusColors[order.status]} border`}>
+                              {statusLabels[order.status]}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+                            {order.order_number && (
+                              <span className="font-mono font-medium text-primary">{order.order_number}</span>
+                            )}
+                            {order.products?.product_number && (
+                              <span className="font-mono text-xs">#{order.products.product_number}</span>
+                            )}
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-4 h-4" />
+                              {format(new Date(order.created_at), "MMM d, yyyy 'at' h:mm a")}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        {order.order_number && (
-                          <span className="font-mono font-medium text-primary">{order.order_number}</span>
+                      
+                      <Select
+                        value={order.status}
+                        onValueChange={(value: OrderStatus) => 
+                          updateStatus.mutate({ id: order.id, status: value })
+                        }
+                      >
+                        <SelectTrigger className="w-40">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="in_progress">In Progress</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </CardHeader>
+                  
+                  <CardContent className="space-y-4">
+                    {/* Order Configuration - Prominent Display */}
+                    <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+                      <div className="flex items-center gap-2 mb-3">
+                        <FileText className="w-4 h-4 text-primary" />
+                        <span className="font-medium text-primary">Order Specifications</span>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        {order.selected_size && (
+                          <div className="flex items-center gap-2">
+                            <Ruler className="w-4 h-4 text-muted-foreground" />
+                            <div>
+                              <p className="text-xs text-muted-foreground">Size</p>
+                              <p className="font-medium capitalize">{order.selected_size}</p>
+                            </div>
+                          </div>
                         )}
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          {format(new Date(order.created_at), "MMM d, yyyy 'at' h:mm a")}
-                        </span>
+                        {order.selected_color && (
+                          <div className="flex items-center gap-2">
+                            <Palette className="w-4 h-4 text-muted-foreground" />
+                            <div>
+                              <p className="text-xs text-muted-foreground">Colors</p>
+                              <p className="font-medium">{order.selected_color}</p>
+                            </div>
+                          </div>
+                        )}
+                        {order.selected_material && (
+                          <div className="flex items-center gap-2">
+                            <Package className="w-4 h-4 text-muted-foreground" />
+                            <div>
+                              <p className="text-xs text-muted-foreground">Material</p>
+                              <p className="font-medium capitalize">{order.selected_material}</p>
+                            </div>
+                          </div>
+                        )}
+                        {order.selected_infill && (
+                          <div className="flex items-center gap-2">
+                            <Package className="w-4 h-4 text-muted-foreground" />
+                            <div>
+                              <p className="text-xs text-muted-foreground">Infill</p>
+                              <p className="font-medium">{order.selected_infill}</p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
-                    
-                    <Select
-                      value={order.status}
-                      onValueChange={(value: OrderStatus) => 
-                        updateStatus.mutate({ id: order.id, status: value })
-                      }
-                    >
-                      <SelectTrigger className="w-40">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="in_progress">In Progress</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                        <SelectItem value="cancelled">Cancelled</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </CardHeader>
-                
-                <CardContent className="space-y-4">
-                  {/* Customer Info */}
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-muted-foreground">Customer</p>
-                      <p className="font-medium">{order.customer_name}</p>
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                        <Mail className="w-4 h-4" /> Email
-                      </p>
-                      <a href={`mailto:${order.customer_email}`} className="text-primary hover:underline">
-                        {order.customer_email}
-                      </a>
-                    </div>
-                    
-                    {order.customer_phone && (
+
+                    {/* Customization - Prominent if exists */}
+                    {order.customization_details && (
+                      <div className="p-4 rounded-lg bg-accent/10 border border-accent/30">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Sparkles className="w-4 h-4 text-accent" />
+                          <span className="font-medium text-accent">Customization Details</span>
+                        </div>
+                        <p className="text-foreground font-medium text-lg">{order.customization_details}</p>
+                      </div>
+                    )}
+
+                    {/* Customer Info */}
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-muted-foreground">Customer</p>
+                        <p className="font-medium">{order.customer_name}</p>
+                      </div>
+                      
                       <div className="space-y-1">
                         <p className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                          <Phone className="w-4 h-4" /> Phone
+                          <Mail className="w-4 h-4" /> Email
                         </p>
-                        <a href={`tel:${order.customer_phone}`} className="text-primary hover:underline">
-                          {order.customer_phone}
+                        <a href={`mailto:${order.customer_email}`} className="text-primary hover:underline">
+                          {order.customer_email}
                         </a>
                       </div>
+                      
+                      {order.customer_phone && (
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+                            <Phone className="w-4 h-4" /> Phone
+                          </p>
+                          <a href={`tel:${order.customer_phone}`} className="text-primary hover:underline">
+                            {order.customer_phone}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Delivery Info */}
+                    <div className="p-4 rounded-lg bg-muted/50 space-y-3">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <MapPin className="w-4 h-4 text-primary" />
+                        Delivery Location: <span className="text-primary">{order.delivery_location}</span>
+                      </div>
+                      
+                      {order.delivery_address && (
+                        <p className="text-sm text-muted-foreground pl-6">
+                          {order.delivery_address}
+                        </p>
+                      )}
+                      
+                      <div className="flex flex-wrap gap-4 pt-2 border-t border-border">
+                        <div className="flex items-center gap-2 text-sm">
+                          <Package className="w-4 h-4 text-muted-foreground" />
+                          Product: <span className="font-medium">${Number(order.product_price).toFixed(2)}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <Truck className="w-4 h-4 text-muted-foreground" />
+                          Shipping: <span className="font-medium">${Number(order.shipping_cost).toFixed(2)}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <DollarSign className="w-4 h-4 text-primary" />
+                          Total: <span className="font-bold text-primary text-lg">${Number(order.total_amount).toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Notes */}
+                    {order.notes && (
+                      <div className="p-3 rounded-lg bg-muted">
+                        <p className="text-sm font-medium text-muted-foreground mb-1">Notes:</p>
+                        <p className="text-sm">{order.notes}</p>
+                      </div>
                     )}
-                  </div>
-
-                  {/* Delivery Info */}
-                  <div className="p-4 rounded-lg bg-muted/50 space-y-3">
-                    <div className="flex items-center gap-2 text-sm font-medium">
-                      <MapPin className="w-4 h-4 text-primary" />
-                      Delivery Location: <span className="text-primary">{order.delivery_location}</span>
-                    </div>
-                    
-                    {order.delivery_address && (
-                      <p className="text-sm text-muted-foreground pl-6">
-                        {order.delivery_address}
-                      </p>
-                    )}
-                    
-                    <div className="flex flex-wrap gap-4 pt-2 border-t border-border">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Package className="w-4 h-4 text-muted-foreground" />
-                        Product: <span className="font-medium">${Number(order.product_price).toFixed(2)}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Truck className="w-4 h-4 text-muted-foreground" />
-                        Shipping: <span className="font-medium">${Number(order.shipping_cost).toFixed(2)}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <DollarSign className="w-4 h-4 text-primary" />
-                        Total: <span className="font-bold text-primary">${Number(order.total_amount).toFixed(2)}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Product Options */}
-                  {(order.selected_color || order.selected_material || order.selected_size || order.selected_infill) && (
-                    <div className="flex flex-wrap gap-2">
-                      {order.selected_color && (
-                        <Badge variant="outline">Color: {order.selected_color}</Badge>
-                      )}
-                      {order.selected_material && (
-                        <Badge variant="outline">Material: {order.selected_material}</Badge>
-                      )}
-                      {order.selected_size && (
-                        <Badge variant="outline">Size: {order.selected_size}</Badge>
-                      )}
-                      {order.selected_infill && (
-                        <Badge variant="outline">Infill: {order.selected_infill}</Badge>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Customization */}
-                  {order.customization_details && (
-                    <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
-                      <p className="text-sm font-medium text-accent mb-1">Customization:</p>
-                      <p className="text-sm">{order.customization_details}</p>
-                    </div>
-                  )}
-
-                  {/* Notes */}
-                  {order.notes && (
-                    <div className="p-3 rounded-lg bg-muted">
-                      <p className="text-sm font-medium text-muted-foreground mb-1">Notes:</p>
-                      <p className="text-sm">{order.notes}</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         ) : (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-16">
-              <p className="text-muted-foreground">No orders yet</p>
+              {searchQuery || statusFilter !== "all" ? (
+                <>
+                  <Search className="w-12 h-12 text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">No orders match your search</p>
+                  <Button 
+                    variant="ghost" 
+                    className="mt-2"
+                    onClick={() => { setSearchQuery(""); setStatusFilter("all"); }}
+                  >
+                    Clear filters
+                  </Button>
+                </>
+              ) : (
+                <p className="text-muted-foreground">No orders yet</p>
+              )}
             </CardContent>
           </Card>
         )}
