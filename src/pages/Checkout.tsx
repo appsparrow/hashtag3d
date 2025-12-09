@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Copy, Truck, MapPin, Tag, PartyPopper } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Copy, Truck, MapPin, Tag, PartyPopper, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,6 +12,8 @@ import { useCreateOrder } from "@/hooks/useOrders";
 import { toast } from "@/hooks/use-toast";
 import defaultProductImage from "@/assets/default-product.jpg";
 
+type FulfillmentType = "pickup" | "delivery" | "shipping";
+
 export default function Checkout() {
   const navigate = useNavigate();
   const { items, clearCart } = useCart();
@@ -19,35 +21,61 @@ export default function Checkout() {
   const { data: currencySymbolSetting } = useLocalSetting("business_currency_symbol");
   const { data: deliveryFeeSetting } = useLocalSetting("delivery_fee");
   const { data: promoCodeSetting } = useLocalSetting("free_delivery_promo_code");
+  const { data: freeShippingThresholdSetting } = useLocalSetting("free_shipping_threshold");
+  const { data: shippingFeeSetting } = useLocalSetting("shipping_fee");
   const createOrder = useCreateOrder();
 
   const currencySymbol = (currencySymbolSetting?.setting_value as string) || "$";
   const deliveryFee = (deliveryFeeSetting?.setting_value as number) || 5.00;
   const validPromoCode = ((promoCodeSetting?.setting_value as string) || "").toUpperCase();
+  const freeShippingThreshold = (freeShippingThresholdSetting?.setting_value as number) || 15;
+  const baseShippingFee = (shippingFeeSetting?.setting_value as number) || 8;
 
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
     address: "",
-    deliveryArea: "",
     notes: "",
   });
-  const [fulfillmentType, setFulfillmentType] = useState<"pickup" | "delivery">("pickup");
+  const [fulfillmentType, setFulfillmentType] = useState<FulfillmentType>("pickup");
   const [promoCode, setPromoCode] = useState("");
   const [promoApplied, setPromoApplied] = useState(false);
   const [orderNumbers, setOrderNumbers] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isInDeliveryArea = formData.deliveryArea && deliveryAreas?.includes(formData.deliveryArea);
+  // Auto-detect if address is in delivery zone
+  const detectedZone = useMemo(() => {
+    if (!formData.address || !deliveryAreas) return null;
+    const addressLower = formData.address.toLowerCase();
+    return deliveryAreas.find(area => 
+      addressLower.includes(area.toLowerCase().split(",")[0].toLowerCase())
+    ) || null;
+  }, [formData.address, deliveryAreas]);
+
+  const isInDeliveryArea = !!detectedZone;
+
+  // Auto-set fulfillment type based on detection
+  useEffect(() => {
+    if (isInDeliveryArea) {
+      setFulfillmentType("pickup");
+    } else if (formData.address.length > 5) {
+      setFulfillmentType("shipping");
+    }
+  }, [isInDeliveryArea, formData.address]);
+
+  const subtotal = items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
   
   const shippingCost = useMemo(() => {
     if (fulfillmentType === "pickup") return 0;
-    if (promoApplied) return 0;
-    return deliveryFee;
-  }, [fulfillmentType, promoApplied, deliveryFee]);
+    if (fulfillmentType === "delivery") {
+      return promoApplied ? 0 : deliveryFee;
+    }
+    // Shipping - check free threshold
+    if (subtotal >= freeShippingThreshold) return 0;
+    return baseShippingFee;
+  }, [fulfillmentType, promoApplied, deliveryFee, subtotal, freeShippingThreshold, baseShippingFee]);
 
-  const subtotal = items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
   const total = subtotal + shippingCost;
 
   const handleApplyPromo = () => {
@@ -69,13 +97,18 @@ export default function Checkout() {
     try {
       for (const item of items) {
         for (let i = 0; i < item.quantity; i++) {
+          const deliveryLocation = detectedZone || "Shipping";
+          const deliveryAddress = fulfillmentType === "pickup" 
+            ? `PICKUP - ${detectedZone}` 
+            : formData.address;
+
           const result = await createOrder.mutateAsync({
             product_id: item.product_id,
             customer_name: formData.name,
             customer_email: formData.email,
             customer_phone: formData.phone || undefined,
-            delivery_location: formData.deliveryArea || deliveryAreas?.[0] || "Alpharetta, GA",
-            delivery_address: fulfillmentType === "delivery" ? formData.address : `PICKUP - ${formData.deliveryArea}`,
+            delivery_location: deliveryLocation,
+            delivery_address: deliveryAddress,
             shipping_cost: i === 0 && items.indexOf(item) === 0 ? shippingCost : 0,
             product_price: item.unit_price,
             total_amount: item.unit_price + (i === 0 && items.indexOf(item) === 0 ? shippingCost : 0),
@@ -147,6 +180,8 @@ export default function Checkout() {
     return null;
   }
 
+  const canSubmit = formData.name && formData.email && formData.address;
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto max-w-4xl px-4 py-8">
@@ -160,9 +195,9 @@ export default function Checkout() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Checkout Form */}
           <form onSubmit={handleSubmit} className="lg:col-span-2 space-y-6">
+            {/* Step 1: Contact Info */}
             <div className="p-6 rounded-xl border bg-card space-y-4">
-              <h2 className="text-lg font-semibold text-foreground">Contact Information</h2>
-
+              <h2 className="text-lg font-semibold text-foreground">1. Contact Information</h2>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="name">Full Name *</Label>
@@ -170,6 +205,7 @@ export default function Checkout() {
                     id="name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Your name"
                     required
                   />
                 </div>
@@ -180,157 +216,190 @@ export default function Checkout() {
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="you@example.com"
                     required
                   />
                 </div>
               </div>
-
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
+                <Label htmlFor="phone">Phone (optional)</Label>
                 <Input
                   id="phone"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="(555) 123-4567"
                 />
               </div>
             </div>
 
-            {/* Delivery Area Selection */}
+            {/* Step 2: Address (Auto-detect) */}
             <div className="p-6 rounded-xl border bg-card space-y-4">
-              <h2 className="text-lg font-semibold text-foreground">Select Your Area</h2>
-              
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {deliveryAreas?.map((area) => (
-                  <Button
-                    key={area}
-                    type="button"
-                    variant={formData.deliveryArea === area ? "default" : "outline"}
-                    className="justify-start"
-                    onClick={() => setFormData({ ...formData, deliveryArea: area })}
-                  >
-                    <MapPin className="w-4 h-4 mr-2" />
-                    {area}
-                  </Button>
-                ))}
+              <h2 className="text-lg font-semibold text-foreground">2. Your Address</h2>
+              <div className="space-y-2">
+                <Label htmlFor="address">Full Address *</Label>
+                <Input
+                  id="address"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  placeholder="123 Main St, City, State ZIP"
+                  required
+                />
+                <p className="text-xs text-muted-foreground">We'll auto-detect your delivery options</p>
               </div>
 
-              {/* Woohoo message for local areas */}
-              {isInDeliveryArea && (
-                <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20 flex items-start gap-3">
-                  <PartyPopper className="w-5 h-5 text-green-600 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-green-700 dark:text-green-400">
-                      Woohoo! You're in {formData.deliveryArea}!
-                    </p>
-                    <p className="text-sm text-green-600 dark:text-green-500">
-                      You can pick it up for FREE, or get it delivered for {currencySymbol}{deliveryFee.toFixed(2)}.
-                    </p>
-                  </div>
-                </div>
+              {/* Auto-detection message */}
+              {formData.address.length > 5 && (
+                <>
+                  {isInDeliveryArea ? (
+                    <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20 flex items-start gap-3">
+                      <PartyPopper className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="font-medium text-green-700 dark:text-green-400">
+                          🎉 Good news! We deliver to your area.
+                        </p>
+                        <p className="text-sm text-green-600 dark:text-green-500">
+                          You can choose Pickup (FREE) or Delivery ({currencySymbol}{deliveryFee.toFixed(2)}).
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-start gap-3">
+                      <Package className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="font-medium text-blue-700 dark:text-blue-400">
+                          📦 We don't deliver to your address, but we can ship it!
+                        </p>
+                        <p className="text-sm text-blue-600 dark:text-blue-500">
+                          {subtotal >= freeShippingThreshold 
+                            ? "You qualify for FREE shipping!" 
+                            : `Free shipping on orders over ${currencySymbol}${freeShippingThreshold}.`}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
-            {/* Fulfillment Options - only show if in delivery area */}
-            {isInDeliveryArea && (
+            {/* Step 3: Delivery Options (only show after address entered) */}
+            {formData.address.length > 5 && (
               <div className="p-6 rounded-xl border bg-card space-y-4">
-                <h2 className="text-lg font-semibold text-foreground">How would you like to receive your order?</h2>
+                <h2 className="text-lg font-semibold text-foreground">3. Delivery Option</h2>
                 
-                <RadioGroup value={fulfillmentType} onValueChange={(v) => setFulfillmentType(v as "pickup" | "delivery")}>
-                  <div className="flex items-center space-x-3 p-4 rounded-lg border hover:bg-muted/50 cursor-pointer">
-                    <RadioGroupItem value="pickup" id="pickup" />
-                    <Label htmlFor="pickup" className="flex-1 cursor-pointer">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-primary" />
-                        <span className="font-medium">Free Pickup</span>
-                        <span className="ml-auto text-green-600 font-semibold">FREE</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">Pick up from our location in {formData.deliveryArea}</p>
-                    </Label>
-                  </div>
-                  
-                  <div className="flex items-center space-x-3 p-4 rounded-lg border hover:bg-muted/50 cursor-pointer">
-                    <RadioGroupItem value="delivery" id="delivery" />
-                    <Label htmlFor="delivery" className="flex-1 cursor-pointer">
-                      <div className="flex items-center gap-2">
-                        <Truck className="w-4 h-4 text-primary" />
-                        <span className="font-medium">Local Delivery</span>
-                        <span className="ml-auto font-semibold">
-                          {promoApplied ? (
-                            <span className="text-green-600">FREE</span>
-                          ) : (
-                            <span>{currencySymbol}{deliveryFee.toFixed(2)}</span>
-                          )}
-                        </span>
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">We'll deliver to your address in {formData.deliveryArea}</p>
-                    </Label>
-                  </div>
-                </RadioGroup>
-
-                {/* Delivery address and promo code - only for delivery */}
-                {fulfillmentType === "delivery" && (
-                  <div className="space-y-4 pt-4 border-t">
-                    <div className="space-y-2">
-                      <Label htmlFor="address">Delivery Address *</Label>
-                      <Input
-                        id="address"
-                        value={formData.address}
-                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                        placeholder="Enter your full address"
-                        required={fulfillmentType === "delivery"}
-                      />
-                    </div>
-
-                    {/* Promo Code */}
-                    {!promoApplied && validPromoCode && (
-                      <div className="space-y-2">
-                        <Label htmlFor="promo">Have a promo code?</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="promo"
-                            value={promoCode}
-                            onChange={(e) => setPromoCode(e.target.value)}
-                            placeholder="Enter code to waive delivery fee"
-                          />
-                          <Button type="button" variant="outline" onClick={handleApplyPromo}>
-                            <Tag className="w-4 h-4 mr-2" />
-                            Apply
-                          </Button>
+                <RadioGroup value={fulfillmentType} onValueChange={(v) => setFulfillmentType(v as FulfillmentType)}>
+                  {/* Pickup - only if in delivery area */}
+                  {isInDeliveryArea && (
+                    <div className="flex items-center space-x-3 p-4 rounded-lg border hover:bg-muted/50 cursor-pointer">
+                      <RadioGroupItem value="pickup" id="pickup" />
+                      <Label htmlFor="pickup" className="flex-1 cursor-pointer">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-4 h-4 text-primary" />
+                          <span className="font-medium">Pickup</span>
+                          <span className="ml-auto text-green-600 font-semibold">FREE</span>
                         </div>
-                      </div>
-                    )}
+                        <p className="text-sm text-muted-foreground mt-1">Pick up from our location in {detectedZone}</p>
+                      </Label>
+                    </div>
+                  )}
+                  
+                  {/* Delivery - only if in delivery area */}
+                  {isInDeliveryArea && (
+                    <div className="flex items-center space-x-3 p-4 rounded-lg border hover:bg-muted/50 cursor-pointer">
+                      <RadioGroupItem value="delivery" id="delivery" />
+                      <Label htmlFor="delivery" className="flex-1 cursor-pointer">
+                        <div className="flex items-center gap-2">
+                          <Truck className="w-4 h-4 text-primary" />
+                          <span className="font-medium">Local Delivery</span>
+                          <span className="ml-auto font-semibold">
+                            {promoApplied ? (
+                              <span className="text-green-600">FREE</span>
+                            ) : (
+                              <span>{currencySymbol}{deliveryFee.toFixed(2)}</span>
+                            )}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">We'll deliver to your address</p>
+                      </Label>
+                    </div>
+                  )}
 
-                    {promoApplied && (
-                      <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400 text-sm">
-                        ✓ Promo code applied! Delivery fee waived.
-                      </div>
-                    )}
-                  </div>
-                )}
+                  {/* Shipping - only if NOT in delivery area */}
+                  {!isInDeliveryArea && (
+                    <div className="flex items-center space-x-3 p-4 rounded-lg border hover:bg-muted/50 cursor-pointer">
+                      <RadioGroupItem value="shipping" id="shipping" />
+                      <Label htmlFor="shipping" className="flex-1 cursor-pointer">
+                        <div className="flex items-center gap-2">
+                          <Package className="w-4 h-4 text-primary" />
+                          <span className="font-medium">Shipping</span>
+                          <span className="ml-auto font-semibold">
+                            {subtotal >= freeShippingThreshold ? (
+                              <span className="text-green-600">FREE</span>
+                            ) : (
+                              <span>{currencySymbol}{baseShippingFee.toFixed(2)}</span>
+                            )}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {subtotal >= freeShippingThreshold 
+                            ? "Free shipping applied!" 
+                            : `Add ${currencySymbol}${(freeShippingThreshold - subtotal).toFixed(2)} more for free shipping`}
+                        </p>
+                      </Label>
+                    </div>
+                  )}
+                </RadioGroup>
               </div>
             )}
 
-            {/* Notes */}
-            <div className="p-6 rounded-xl border bg-card space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="notes">Order Notes</Label>
-                <Textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  rows={3}
-                  placeholder="Any special instructions..."
-                />
+            {/* Step 4: Promo Code (only for local delivery) */}
+            {fulfillmentType === "delivery" && !promoApplied && validPromoCode && (
+              <div className="p-6 rounded-xl border bg-card space-y-4">
+                <h2 className="text-lg font-semibold text-foreground">4. Promo Code</h2>
+                <div className="p-4 rounded-lg bg-primary/5 border border-primary/10">
+                  <p className="text-sm text-foreground mb-3">
+                    🎁 <strong>Want FREE delivery today?</strong><br/>
+                    Follow us on Instagram/TikTok and use code: <code className="bg-primary/10 px-2 py-0.5 rounded font-mono">{validPromoCode}</code>
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      value={promoCode}
+                      onChange={(e) => setPromoCode(e.target.value)}
+                      placeholder="Enter promo code"
+                    />
+                    <Button type="button" variant="outline" onClick={handleApplyPromo}>
+                      <Tag className="w-4 h-4 mr-2" />
+                      Apply
+                    </Button>
+                  </div>
+                </div>
               </div>
+            )}
+
+            {promoApplied && (
+              <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400">
+                ✓ Promo code applied! Delivery fee waived.
+              </div>
+            )}
+
+            {/* Step 5: Order Notes */}
+            <div className="p-6 rounded-xl border bg-card space-y-4">
+              <h2 className="text-lg font-semibold text-foreground">{fulfillmentType === "delivery" && !promoApplied && validPromoCode ? "5" : "4"}. Any Special Instructions?</h2>
+              <Textarea
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                rows={3}
+                placeholder="Optional notes..."
+              />
             </div>
 
+            {/* Submit Button */}
             <Button 
               type="submit" 
               size="lg" 
-              className="w-full" 
-              disabled={isSubmitting || !formData.deliveryArea}
+              className="w-full text-lg py-6" 
+              disabled={isSubmitting || !canSubmit}
             >
-              {isSubmitting ? "Submitting..." : `Place Order - ${currencySymbol}${total.toFixed(2)}`}
+              {isSubmitting ? "Submitting..." : `Place Order – ${currencySymbol}${total.toFixed(2)}`}
             </Button>
           </form>
 
@@ -372,12 +441,18 @@ export default function Checkout() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">
-                    {fulfillmentType === "pickup" ? "Pickup" : "Delivery"}
+                    {fulfillmentType === "pickup" ? "Pickup" : fulfillmentType === "delivery" ? "Delivery" : "Shipping"}
                   </span>
                   <span className={shippingCost === 0 ? "text-green-600 font-medium" : "text-foreground"}>
                     {shippingCost === 0 ? "FREE" : `${currencySymbol}${shippingCost.toFixed(2)}`}
                   </span>
                 </div>
+                {promoApplied && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Promo ({validPromoCode})</span>
+                    <span>-{currencySymbol}{deliveryFee.toFixed(2)}</span>
+                  </div>
+                )}
               </div>
 
               <div className="pt-4 border-t">

@@ -31,6 +31,8 @@ export default function Settings() {
   const { data: businessPhoneSetting } = useLocalSetting("business_phone");
   const { data: deliveryFeeSetting } = useLocalSetting("delivery_fee");
   const { data: promoCodeSetting } = useLocalSetting("free_delivery_promo_code");
+  const { data: shippingFeeSetting } = useLocalSetting("shipping_fee");
+  const { data: freeShippingThresholdSetting } = useLocalSetting("free_shipping_threshold");
   const updateSetting = useUpdateLocalSetting();
   
   const [areas, setAreas] = useState<string[]>([]);
@@ -44,6 +46,8 @@ export default function Settings() {
   const [businessPhone, setBusinessPhone] = useState("");
   const [deliveryFee, setDeliveryFee] = useState("5.00");
   const [promoCode, setPromoCode] = useState("");
+  const [shippingFee, setShippingFee] = useState("8.00");
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState("15.00");
 
   useEffect(() => {
     if (deliveryAreas) setAreas(deliveryAreas);
@@ -85,6 +89,14 @@ export default function Settings() {
     if (promoCodeSetting?.setting_value) setPromoCode(promoCodeSetting.setting_value as string);
   }, [promoCodeSetting]);
 
+  useEffect(() => {
+    if (shippingFeeSetting?.setting_value !== undefined) setShippingFee(String(shippingFeeSetting.setting_value));
+  }, [shippingFeeSetting]);
+
+  useEffect(() => {
+    if (freeShippingThresholdSetting?.setting_value !== undefined) setFreeShippingThreshold(String(freeShippingThresholdSetting.setting_value));
+  }, [freeShippingThresholdSetting]);
+
   const handleAddArea = () => {
     if (newArea.trim() && !areas.includes(newArea.trim())) {
       setAreas([...areas, newArea.trim()]);
@@ -100,6 +112,8 @@ export default function Settings() {
     await updateSetting.mutateAsync({ key: "delivery_areas", value: areas });
     await updateSetting.mutateAsync({ key: "delivery_fee", value: parseFloat(deliveryFee) || 5.00 });
     await updateSetting.mutateAsync({ key: "free_delivery_promo_code", value: promoCode.toUpperCase() });
+    await updateSetting.mutateAsync({ key: "shipping_fee", value: parseFloat(shippingFee) || 8.00 });
+    await updateSetting.mutateAsync({ key: "free_shipping_threshold", value: parseFloat(freeShippingThreshold) || 15.00 });
   };
   const handleSaveInstagram = () => updateSetting.mutateAsync({ key: "instagram_url", value: instagramUrl });
   const handleSaveYoutube = () => updateSetting.mutateAsync({ key: "youtube_url", value: youtubeUrl });
@@ -252,12 +266,12 @@ export default function Settings() {
               </div>
             </div>
 
-            {/* Delivery Fee & Promo Code */}
+            {/* Local Delivery Settings */}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="deliveryFee">
                   <DollarSign className="w-4 h-4 inline mr-1" />
-                  Delivery Fee (for above areas)
+                  Local Delivery Fee
                 </Label>
                 <Input
                   id="deliveryFee"
@@ -267,15 +281,51 @@ export default function Settings() {
                   value={deliveryFee}
                   onChange={(e) => setDeliveryFee(e.target.value)}
                 />
+                <p className="text-xs text-muted-foreground">Charged for delivery in above areas</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="promoCode">Free Delivery Promo Code</Label>
                 <Input
                   id="promoCode"
-                  placeholder="LIKE-FOLLOW-SUBSCRIBE"
+                  placeholder="FREESHIP"
                   value={promoCode}
                   onChange={(e) => setPromoCode(e.target.value)}
                 />
+                <p className="text-xs text-muted-foreground">Customers can use this to waive delivery fee</p>
+              </div>
+            </div>
+
+            {/* Shipping Settings (outside delivery areas) */}
+            <div className="pt-4 border-t">
+              <Label className="text-base font-medium mb-3 block">Outside Delivery Areas (Shipping)</Label>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="shippingFee">
+                    <DollarSign className="w-4 h-4 inline mr-1" />
+                    Shipping Fee
+                  </Label>
+                  <Input
+                    id="shippingFee"
+                    type="number"
+                    step="0.01"
+                    placeholder="8.00"
+                    value={shippingFee}
+                    onChange={(e) => setShippingFee(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">For addresses outside delivery areas</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="freeShippingThreshold">Free Shipping Threshold</Label>
+                  <Input
+                    id="freeShippingThreshold"
+                    type="number"
+                    step="0.01"
+                    placeholder="15.00"
+                    value={freeShippingThreshold}
+                    onChange={(e) => setFreeShippingThreshold(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">Free shipping on orders above this amount</p>
+                </div>
               </div>
             </div>
 
