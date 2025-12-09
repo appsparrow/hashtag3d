@@ -361,12 +361,16 @@ export type Database = {
       }
       products: {
         Row: {
+          accessories_cost: number
           allowed_materials: string[] | null
           allowed_sizes: string[] | null
           category: string
           colors: string[] | null
           created_at: string
           description: string | null
+          estimated_grams_premium: number
+          estimated_grams_standard: number
+          estimated_grams_ultra: number
           id: string
           images: string[] | null
           infill_options: string[] | null
@@ -383,12 +387,16 @@ export type Database = {
           video_url: string | null
         }
         Insert: {
+          accessories_cost?: number
           allowed_materials?: string[] | null
           allowed_sizes?: string[] | null
           category?: string
           colors?: string[] | null
           created_at?: string
           description?: string | null
+          estimated_grams_premium?: number
+          estimated_grams_standard?: number
+          estimated_grams_ultra?: number
           id?: string
           images?: string[] | null
           infill_options?: string[] | null
@@ -405,12 +413,16 @@ export type Database = {
           video_url?: string | null
         }
         Update: {
+          accessories_cost?: number
           allowed_materials?: string[] | null
           allowed_sizes?: string[] | null
           category?: string
           colors?: string[] | null
           created_at?: string
           description?: string | null
+          estimated_grams_premium?: number
+          estimated_grams_standard?: number
+          estimated_grams_ultra?: number
           id?: string
           images?: string[] | null
           infill_options?: string[] | null

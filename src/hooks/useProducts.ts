@@ -21,6 +21,10 @@ export interface Product {
   likes_count: number;
   allowed_materials: string[] | null;
   allowed_sizes: string[] | null;
+  estimated_grams_standard: number;
+  estimated_grams_premium: number;
+  estimated_grams_ultra: number;
+  accessories_cost: number;
   created_at: string;
   updated_at: string;
 }
@@ -41,6 +45,10 @@ export interface CreateProductData {
   is_active?: boolean;
   allowed_materials?: string[];
   allowed_sizes?: string[];
+  estimated_grams_standard?: number;
+  estimated_grams_premium?: number;
+  estimated_grams_ultra?: number;
+  accessories_cost?: number;
 }
 
 export function useProducts(includeInactive = false) {

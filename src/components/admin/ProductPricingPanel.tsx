@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calculator, DollarSign, TrendingUp, TrendingDown } from "lucide-react";
-import { usePricingSettings } from "@/hooks/usePricing";
+import { Calculator, DollarSign, TrendingUp, TrendingDown, Percent, Package } from "lucide-react";
+import { usePricingSettings, useMaterials } from "@/hooks/usePricing";
 
 interface ProductPricingPanelProps {
   basePrice: number;
@@ -10,6 +10,10 @@ interface ProductPricingPanelProps {
   allowedSizes: string[];
   numColors: number;
   isCustomizable: boolean;
+  estimatedGramsStandard?: number;
+  estimatedGramsPremium?: number;
+  estimatedGramsUltra?: number;
+  accessoriesCost?: number;
 }
 
 export function ProductPricingPanel({
@@ -18,12 +22,33 @@ export function ProductPricingPanel({
   allowedSizes,
   numColors,
   isCustomizable,
+  estimatedGramsStandard = 0,
+  estimatedGramsPremium = 0,
+  estimatedGramsUltra = 0,
+  accessoriesCost = 0,
 }: ProductPricingPanelProps) {
   const { data: pricingSettings } = usePricingSettings();
+  const { data: materials } = useMaterials();
 
   const getUpcharge = (key: string) => {
     return pricingSettings?.find(s => s.setting_key === key)?.setting_value || 0;
   };
+
+  // Get cost per gram for each material category
+  const materialCostPerGram = useMemo(() => {
+    if (!materials) return { standard: 0.03, premium: 0.05, ultra: 0.08 };
+    
+    const getCostForCategory = (category: string) => {
+      const mat = materials.find(m => m.category === category);
+      return mat?.cost_per_gram || (category === 'standard' ? 0.03 : category === 'premium' ? 0.05 : 0.08);
+    };
+
+    return {
+      standard: getCostForCategory('standard'),
+      premium: getCostForCategory('premium'),
+      ultra: getCostForCategory('ultra'),
+    };
+  }, [materials]);
 
   const priceRange = useMemo(() => {
     if (!pricingSettings) return null;
@@ -73,6 +98,29 @@ export function ProductPricingPanel({
     const maxColorUpcharge = numColors * colorUltraUpcharge;
     const maxPrice = basePrice + maxMaterialUpcharge + maxSizeUpcharge + amsFee + maxColorUpcharge + customizationFee;
 
+    // Calculate material costs based on estimated grams
+    const materialCosts = {
+      standard: (estimatedGramsStandard * materialCostPerGram.standard) + accessoriesCost,
+      premium: (estimatedGramsPremium * materialCostPerGram.premium) + accessoriesCost,
+      ultra: (estimatedGramsUltra * materialCostPerGram.ultra) + accessoriesCost,
+    };
+
+    // Calculate profit margins
+    const minMaterialKey = allowedMaterials.reduce((min, curr) => 
+      (materialUpcharges[curr as keyof typeof materialUpcharges] || 0) < (materialUpcharges[min as keyof typeof materialUpcharges] || 0) ? curr : min
+    );
+    const maxMaterialKey = allowedMaterials.reduce((max, curr) => 
+      (materialUpcharges[curr as keyof typeof materialUpcharges] || 0) > (materialUpcharges[max as keyof typeof materialUpcharges] || 0) ? curr : max
+    );
+
+    const minCost = materialCosts[minMaterialKey as keyof typeof materialCosts] || 0;
+    const maxCost = materialCosts[maxMaterialKey as keyof typeof materialCosts] || 0;
+    
+    const minProfit = minPrice - minCost;
+    const maxProfit = maxPrice - maxCost;
+    const minProfitMargin = minCost > 0 ? ((minProfit / minPrice) * 100) : 0;
+    const maxProfitMargin = maxCost > 0 ? ((maxProfit / maxPrice) * 100) : 0;
+
     return {
       min: minPrice,
       max: maxPrice,
@@ -84,8 +132,15 @@ export function ProductPricingPanel({
       minSizeUpcharge,
       maxSizeUpcharge,
       maxColorUpcharge,
+      materialCosts,
+      minCost,
+      maxCost,
+      minProfit,
+      maxProfit,
+      minProfitMargin,
+      maxProfitMargin,
     };
-  }, [basePrice, allowedMaterials, allowedSizes, numColors, isCustomizable, pricingSettings]);
+  }, [basePrice, allowedMaterials, allowedSizes, numColors, isCustomizable, pricingSettings, estimatedGramsStandard, estimatedGramsPremium, estimatedGramsUltra, accessoriesCost, materialCostPerGram]);
 
   if (!priceRange) {
     return (
@@ -101,6 +156,7 @@ export function ProductPricingPanel({
   }
 
   const hasRange = priceRange.min !== priceRange.max;
+  const hasCostData = estimatedGramsStandard > 0 || estimatedGramsPremium > 0 || estimatedGramsUltra > 0;
 
   return (
     <Card className="sticky top-4 border-primary/20 shadow-lg">
@@ -125,6 +181,66 @@ export function ProductPricingPanel({
             <p className="text-3xl font-bold text-primary">${priceRange.min.toFixed(2)}</p>
           )}
         </div>
+
+        {/* Profit Margin Display - only if cost data is available */}
+        {hasCostData && (
+          <div className="p-4 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900">
+            <div className="flex items-center gap-2 mb-2">
+              <Percent className="w-4 h-4 text-green-600" />
+              <span className="text-sm font-medium text-green-700 dark:text-green-400">Profit Margin</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div>
+                <p className="text-xs text-green-600/70 dark:text-green-500/70">Min Profit</p>
+                <p className="font-bold text-green-700 dark:text-green-400">
+                  ${priceRange.minProfit.toFixed(2)} ({priceRange.minProfitMargin.toFixed(0)}%)
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-green-600/70 dark:text-green-500/70">Max Profit</p>
+                <p className="font-bold text-green-700 dark:text-green-400">
+                  ${priceRange.maxProfit.toFixed(2)} ({priceRange.maxProfitMargin.toFixed(0)}%)
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Material Cost Breakdown - only if cost data is available */}
+        {hasCostData && (
+          <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900">
+            <div className="flex items-center gap-2 mb-2">
+              <Package className="w-4 h-4 text-amber-600" />
+              <span className="text-sm font-medium text-amber-700 dark:text-amber-400">Material Costs</span>
+            </div>
+            <div className="space-y-1 text-xs">
+              {allowedMaterials.includes('standard') && estimatedGramsStandard > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-amber-600/70 dark:text-amber-500/70">Standard ({estimatedGramsStandard}g)</span>
+                  <span className="font-medium text-amber-700 dark:text-amber-400">${priceRange.materialCosts.standard.toFixed(2)}</span>
+                </div>
+              )}
+              {allowedMaterials.includes('premium') && estimatedGramsPremium > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-amber-600/70 dark:text-amber-500/70">Premium ({estimatedGramsPremium}g)</span>
+                  <span className="font-medium text-amber-700 dark:text-amber-400">${priceRange.materialCosts.premium.toFixed(2)}</span>
+                </div>
+              )}
+              {allowedMaterials.includes('ultra') && estimatedGramsUltra > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-amber-600/70 dark:text-amber-500/70">Ultra ({estimatedGramsUltra}g)</span>
+                  <span className="font-medium text-amber-700 dark:text-amber-400">${priceRange.materialCosts.ultra.toFixed(2)}</span>
+                </div>
+              )}
+              {accessoriesCost > 0 && (
+                <div className="flex justify-between pt-1 border-t border-amber-200 dark:border-amber-800">
+                  <span className="text-amber-600/70 dark:text-amber-500/70">Accessories</span>
+                  <span className="font-medium text-amber-700 dark:text-amber-400">${accessoriesCost.toFixed(2)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Min/Max breakdown */}
         <div className="grid grid-cols-2 gap-3">
