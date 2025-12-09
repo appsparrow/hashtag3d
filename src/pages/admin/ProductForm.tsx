@@ -258,7 +258,7 @@ export default function ProductForm() {
 
     const submitData = {
       title: formData.title,
-      description: formData.description,
+      description: formData.description || null,
       price: formData.price,
       is_customizable: formData.is_customizable,
       category: formData.category,
@@ -266,15 +266,16 @@ export default function ProductForm() {
       allowed_materials: formData.allowed_materials,
       allowed_sizes: formData.allowed_sizes,
       infill_options: formData.infill_options,
-      personalization_options: formData.personalization_options,
+      personalization_options: formData.personalization_options || null,
       images: formData.images,
-      video_url: formData.video_url,
+      video_url: formData.video_url || null,
       is_active: formData.is_active,
       color_slots: formData.color_slots,
       estimated_grams_small: formData.estimated_grams_small,
       estimated_grams_medium: formData.estimated_grams_medium,
       estimated_grams_large: formData.estimated_grams_large,
       accessories_cost: formData.accessories_cost,
+      product_number: null, // Explicitly set to null to avoid unique constraint issues
     };
 
     if (isEditing && id) {
@@ -373,68 +374,6 @@ export default function ProductForm() {
               </CardContent>
             </Card>
 
-            {/* Cost Estimation (Admin Only) */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="w-5 h-5" />
-                  Filament Usage by Size (Internal)
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Estimated filament grams needed for each size. Used with material cost_per_gram for pricing.
-                </p>
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="grams_small">Small (grams)</Label>
-                    <Input
-                      id="grams_small"
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      value={formData.estimated_grams_small}
-                      onChange={(e) => setFormData({ ...formData, estimated_grams_small: parseFloat(e.target.value) || 0 })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="grams_medium">Medium (grams)</Label>
-                    <Input
-                      id="grams_medium"
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      value={formData.estimated_grams_medium}
-                      onChange={(e) => setFormData({ ...formData, estimated_grams_medium: parseFloat(e.target.value) || 0 })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="grams_large">Large (grams)</Label>
-                    <Input
-                      id="grams_large"
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      value={formData.estimated_grams_large}
-                      onChange={(e) => setFormData({ ...formData, estimated_grams_large: parseFloat(e.target.value) || 0 })}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="accessories_cost">Accessories Cost ($)</Label>
-                  <Input
-                    id="accessories_cost"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.accessories_cost}
-                    onChange={(e) => setFormData({ ...formData, accessories_cost: parseFloat(e.target.value) || 0 })}
-                  />
-                  <p className="text-xs text-muted-foreground">Cost for key rings, cases, or other included accessories.</p>
-                </div>
-              </CardContent>
-            </Card>
-
             {/* Allowed Materials */}
             <Card>
               <CardHeader>
@@ -481,45 +420,87 @@ export default function ProductForm() {
               </CardContent>
             </Card>
 
-            {/* Allowed Sizes */}
+            {/* Allowed Sizes & Weights */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Ruler className="w-5 h-5" />
-                  Allowed Sizes
+                  Allowed Sizes & Weight Estimates
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Which sizes are available for this product?
+                  Select available sizes and specify filament weight (grams) for each.
                 </p>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  {SIZE_OPTIONS.map((size) => (
-                    <div
-                      key={size.value}
-                      className={`flex items-center justify-between p-4 rounded-lg border transition-colors ${
-                        formData.allowed_sizes.includes(size.value)
-                          ? "border-primary bg-primary/5"
-                          : "border-border"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Checkbox
-                          id={`size-${size.value}`}
-                          checked={formData.allowed_sizes.includes(size.value)}
-                          onCheckedChange={() => toggleAllowedSize(size.value)}
-                        />
-                        <Label htmlFor={`size-${size.value}`} className="font-medium cursor-pointer">
-                          {size.label}
-                        </Label>
+                <div className="grid gap-3">
+                  {SIZE_OPTIONS.map((size) => {
+                    const gramsKey = `estimated_grams_${size.value}` as keyof ProductFormData;
+                    const gramsValue = formData[gramsKey] as number;
+                    const isSelected = formData.allowed_sizes.includes(size.value);
+                    
+                    return (
+                      <div
+                        key={size.value}
+                        className={`flex items-center justify-between gap-4 p-4 rounded-lg border transition-colors ${
+                          isSelected
+                            ? "border-primary bg-primary/5"
+                            : "border-border"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-[120px]">
+                          <Checkbox
+                            id={`size-${size.value}`}
+                            checked={isSelected}
+                            onCheckedChange={() => toggleAllowedSize(size.value)}
+                          />
+                          <Label htmlFor={`size-${size.value}`} className="font-medium cursor-pointer">
+                            {size.label}
+                          </Label>
+                        </div>
+                        <div className="flex items-center gap-2 flex-1 max-w-[200px]">
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.1"
+                            placeholder="0"
+                            value={gramsValue || ""}
+                            onChange={(e) => setFormData({ 
+                              ...formData, 
+                              [gramsKey]: parseFloat(e.target.value) || 0 
+                            })}
+                            className="h-9"
+                            disabled={!isSelected}
+                          />
+                          <span className="text-sm text-muted-foreground whitespace-nowrap">grams</span>
+                        </div>
                       </div>
-                      {sizeUpcharges[size.value as keyof typeof sizeUpcharges] > 0 && (
-                        <Badge variant="secondary">
-                          +${sizeUpcharges[size.value as keyof typeof sizeUpcharges].toFixed(2)}
-                        </Badge>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Accessories Cost */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <DollarSign className="w-5 h-5" />
+                  Additional Costs
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <Label htmlFor="accessories_cost">Accessories Cost ($)</Label>
+                  <Input
+                    id="accessories_cost"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.accessories_cost}
+                    onChange={(e) => setFormData({ ...formData, accessories_cost: parseFloat(e.target.value) || 0 })}
+                    className="max-w-[200px]"
+                  />
+                  <p className="text-xs text-muted-foreground">Cost for key rings, cases, or other included accessories.</p>
                 </div>
               </CardContent>
             </Card>
