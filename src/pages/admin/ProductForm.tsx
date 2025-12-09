@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Upload, X, Video, Image as ImageIcon, Palette, Package, Ruler } from "lucide-react";
+import { ArrowLeft, Upload, X, Video, Image as ImageIcon, Palette, Package, Ruler, DollarSign } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useColors, usePricingSettings } from "@/hooks/usePricing";
 
@@ -44,6 +44,10 @@ interface ProductFormData {
   video_url: string;
   is_active: boolean;
   num_colors: number;
+  estimated_grams_standard: number;
+  estimated_grams_premium: number;
+  estimated_grams_ultra: number;
+  accessories_cost: number;
 }
 
 export default function ProductForm() {
@@ -72,6 +76,10 @@ export default function ProductForm() {
     video_url: "",
     is_active: true,
     num_colors: 1,
+    estimated_grams_standard: 0,
+    estimated_grams_premium: 0,
+    estimated_grams_ultra: 0,
+    accessories_cost: 0,
   });
 
   const [uploading, setUploading] = useState(false);
@@ -118,6 +126,10 @@ export default function ProductForm() {
         video_url: existingProduct.video_url ?? "",
         is_active: existingProduct.is_active,
         num_colors: 1,
+        estimated_grams_standard: Number(existingProduct.estimated_grams_standard) || 0,
+        estimated_grams_premium: Number(existingProduct.estimated_grams_premium) || 0,
+        estimated_grams_ultra: Number(existingProduct.estimated_grams_ultra) || 0,
+        accessories_cost: Number(existingProduct.accessories_cost) || 0,
       });
     }
   }, [existingProduct]);
@@ -220,6 +232,10 @@ export default function ProductForm() {
       images: formData.images,
       video_url: formData.video_url,
       is_active: formData.is_active,
+      estimated_grams_standard: formData.estimated_grams_standard,
+      estimated_grams_premium: formData.estimated_grams_premium,
+      estimated_grams_ultra: formData.estimated_grams_ultra,
+      accessories_cost: formData.accessories_cost,
     };
 
     if (isEditing && id) {
@@ -330,6 +346,68 @@ export default function ProductForm() {
                     checked={formData.is_active}
                     onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
                   />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Cost Estimation (Admin Only) */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <DollarSign className="w-5 h-5" />
+                  Cost Estimation (Internal)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Estimated filament usage per material tier and accessories cost. Used for profit calculations.
+                </p>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="grams_standard">Standard (grams)</Label>
+                    <Input
+                      id="grams_standard"
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={formData.estimated_grams_standard}
+                      onChange={(e) => setFormData({ ...formData, estimated_grams_standard: parseFloat(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="grams_premium">Premium (grams)</Label>
+                    <Input
+                      id="grams_premium"
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={formData.estimated_grams_premium}
+                      onChange={(e) => setFormData({ ...formData, estimated_grams_premium: parseFloat(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="grams_ultra">Ultra (grams)</Label>
+                    <Input
+                      id="grams_ultra"
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={formData.estimated_grams_ultra}
+                      onChange={(e) => setFormData({ ...formData, estimated_grams_ultra: parseFloat(e.target.value) || 0 })}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="accessories_cost">Accessories Cost ($)</Label>
+                  <Input
+                    id="accessories_cost"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.accessories_cost}
+                    onChange={(e) => setFormData({ ...formData, accessories_cost: parseFloat(e.target.value) || 0 })}
+                  />
+                  <p className="text-xs text-muted-foreground">Cost for key rings, cases, or other included accessories.</p>
                 </div>
               </CardContent>
             </Card>
@@ -595,6 +673,10 @@ export default function ProductForm() {
             allowedSizes={formData.allowed_sizes}
             numColors={formData.num_colors}
             isCustomizable={formData.is_customizable}
+            estimatedGramsStandard={formData.estimated_grams_standard}
+            estimatedGramsPremium={formData.estimated_grams_premium}
+            estimatedGramsUltra={formData.estimated_grams_ultra}
+            accessoriesCost={formData.accessories_cost}
           />
         </div>
       </div>
