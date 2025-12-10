@@ -22,6 +22,7 @@ export interface Color {
   hex_color: string;
   material_id: string | null;
   is_active: boolean;
+  stock_quantity: number;
   created_at: string;
   updated_at: string;
   material?: Material;
@@ -156,7 +157,14 @@ export function useColors() {
         .select("*, material:materials(*)")
         .order("name", { ascending: true });
       if (error) throw error;
-      return data as (Color & { material: Material | null })[];
+      
+      // Ensure stock_quantity is a number
+      const colors = data?.map(c => ({
+        ...c,
+        stock_quantity: typeof c.stock_quantity === 'number' ? c.stock_quantity : 1000
+      }));
+      
+      return colors as (Color & { material: Material | null })[];
     },
   });
 }

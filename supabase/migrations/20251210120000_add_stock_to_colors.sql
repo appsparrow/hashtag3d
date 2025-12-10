@@ -1,0 +1,4 @@
+
+ALTER TABLE public.colors
+ADD COLUMN IF NOT EXISTS stock_quantity INTEGER NOT NULL DEFAULT 1000;
+

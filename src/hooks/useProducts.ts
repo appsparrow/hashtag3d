@@ -97,27 +97,16 @@ export function useCreateProduct() {
   
   return useMutation({
     mutationFn: async (product: CreateProductData) => {
-      // TEMPORARY FIX: Generate random product number on client to bypass DB issue
-      const randomSuffix = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
-      const tempProductNumber = `1215${randomSuffix}`;
-      
-      const productData = { 
-        ...product, 
-        product_number: tempProductNumber // Force send a number
-      };
-      
-      console.log("Creating product with FORCED number:", tempProductNumber);
+      // Exclude product_number from insert - let DB generate it via trigger
+      const { product_number, ...productData } = product as any;
       
       const { data, error } = await supabase
         .from("products")
-        .insert(productData as any)
+        .insert(productData)
         .select()
         .single();
       
-      if (error) {
-        console.error("Supabase insert error:", error);
-        throw error;
-      }
+      if (error) throw error;
       return data;
     },
     onSuccess: () => {

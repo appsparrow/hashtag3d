@@ -6,7 +6,7 @@ export interface TrackedOrder {
   order_number: string;
   product_id: string | null;
   customer_name: string;
-  status: "pending" | "in_progress" | "completed" | "cancelled";
+  status: "pending" | "confirmed" | "printing" | "finishing" | "ready" | "delivered" | "cancelled";
   created_at: string;
   updated_at: string;
   products?: {

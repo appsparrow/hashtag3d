@@ -292,13 +292,13 @@ export default function ProductForm() {
     console.log("Form submit data:", submitData);
 
     try {
-      if (isEditing && id) {
-        await updateProduct.mutateAsync({ id, ...submitData } as any);
-      } else {
-        await createProduct.mutateAsync(submitData as any);
-      }
-      
-      navigate("/admin/products");
+    if (isEditing && id) {
+      await updateProduct.mutateAsync({ id, ...submitData } as any);
+    } else {
+      await createProduct.mutateAsync(submitData as any);
+    }
+    
+    navigate("/admin/products");
     } catch (error) {
       // Error is already handled by the mutation's onError callback
       // This catch prevents uncaught promise rejection

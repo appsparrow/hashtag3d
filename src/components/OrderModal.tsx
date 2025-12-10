@@ -326,40 +326,53 @@ export function OrderModal({ product, open, onOpenChange }: OrderModalProps) {
                         {availableColors.standard.length > 0 && (
                           <>
                             <div className="px-2 py-1 text-xs text-muted-foreground font-medium">Standard Colors</div>
-                            {availableColors.standard.map(c => (
-                              <SelectItem key={c.id} value={c.name}>
-                                <div className="flex items-center gap-2">
-                                  <span className="w-3 h-3 rounded-full border" style={{ backgroundColor: c.hex_color }} />
-                                  {c.name}
-                                </div>
-                              </SelectItem>
-                            ))}
+                            {availableColors.standard.map(c => {
+                              const stock = c.stock_quantity ?? 1000;
+                              const isOutOfStock = stock < 100;
+                              console.log(`Color: ${c.name}, Stock: ${stock}, Disabled: ${isOutOfStock}`);
+                              return (
+                                <SelectItem key={c.id} value={c.name} disabled={isOutOfStock} className={isOutOfStock ? "opacity-50 pointer-events-none" : ""}>
+                                  <div className="flex items-center gap-2">
+                                    <span className="w-3 h-3 rounded-full border" style={{ backgroundColor: c.hex_color }} />
+                                    {c.name} {isOutOfStock ? "(Out of Stock)" : `(${stock}g)`}
+                                  </div>
+                                </SelectItem>
+                              );
+                            })}
                           </>
                         )}
                         {availableColors.premium.length > 0 && (
                           <>
                             <div className="px-2 py-1 text-xs text-muted-foreground font-medium mt-1">Premium Colors (+{currencySymbol}{getSetting("color_premium_upcharge")})</div>
-                            {availableColors.premium.map(c => (
-                              <SelectItem key={c.id} value={c.name}>
-                                <div className="flex items-center gap-2">
-                                  <span className="w-3 h-3 rounded-full border" style={{ backgroundColor: c.hex_color }} />
-                                  {c.name}
-                                </div>
-                              </SelectItem>
-                            ))}
+                            {availableColors.premium.map(c => {
+                              const stock = c.stock_quantity ?? 1000;
+                              const isOutOfStock = stock < 100;
+                              return (
+                                <SelectItem key={c.id} value={c.name} disabled={isOutOfStock} className={isOutOfStock ? "opacity-50 pointer-events-none" : ""}>
+                                  <div className="flex items-center gap-2">
+                                    <span className="w-3 h-3 rounded-full border" style={{ backgroundColor: c.hex_color }} />
+                                    {c.name} {isOutOfStock ? "(Out of Stock)" : `(${stock}g)`}
+                                  </div>
+                                </SelectItem>
+                              );
+                            })}
                           </>
                         )}
                         {availableColors.ultra.length > 0 && (
                           <>
                             <div className="px-2 py-1 text-xs text-muted-foreground font-medium mt-1">Ultra Colors (+{currencySymbol}{getSetting("color_ultra_upcharge")})</div>
-                            {availableColors.ultra.map(c => (
-                              <SelectItem key={c.id} value={c.name}>
-                                <div className="flex items-center gap-2">
-                                  <span className="w-3 h-3 rounded-full border" style={{ backgroundColor: c.hex_color }} />
-                                  {c.name}
-                                </div>
-                              </SelectItem>
-                            ))}
+                            {availableColors.ultra.map(c => {
+                              const stock = c.stock_quantity ?? 1000;
+                              const isOutOfStock = stock < 100;
+                              return (
+                                <SelectItem key={c.id} value={c.name} disabled={isOutOfStock} className={isOutOfStock ? "opacity-50 pointer-events-none" : ""}>
+                                  <div className="flex items-center gap-2">
+                                    <span className="w-3 h-3 rounded-full border" style={{ backgroundColor: c.hex_color }} />
+                                    {c.name} {isOutOfStock ? "(Out of Stock)" : `(${stock}g)`}
+                                  </div>
+                                </SelectItem>
+                              );
+                            })}
                           </>
                         )}
                       </SelectContent>

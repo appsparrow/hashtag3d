@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Product } from "./useProducts";
 
-export type OrderStatus = "pending" | "in_progress" | "completed" | "cancelled";
+export type OrderStatus = "pending" | "confirmed" | "printing" | "finishing" | "ready" | "delivered" | "cancelled";
 
 export interface Order {
   id: string;
@@ -73,9 +73,15 @@ export function useOrderStats() {
       const stats = {
         total: data.length,
         pending: data.filter(o => o.status === "pending").length,
-        in_progress: data.filter(o => o.status === "in_progress").length,
-        completed: data.filter(o => o.status === "completed").length,
+        confirmed: data.filter(o => o.status === "confirmed").length,
+        printing: data.filter(o => o.status === "printing").length,
+        finishing: data.filter(o => o.status === "finishing").length,
+        ready: data.filter(o => o.status === "ready").length,
+        delivered: data.filter(o => o.status === "delivered").length,
         cancelled: data.filter(o => o.status === "cancelled").length,
+        // Legacy fields for backward compatibility
+        in_progress: data.filter(o => o.status === "printing" || o.status === "finishing").length,
+        completed: data.filter(o => o.status === "delivered").length,
       };
       
       return stats;
@@ -112,6 +118,8 @@ export function useUpdateOrderStatus() {
   
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: OrderStatus }) => {
+      console.log("Updating order:", { id, status });
+      
       const { data, error } = await supabase
         .from("orders")
         .update({ status })
@@ -119,16 +127,27 @@ export function useUpdateOrderStatus() {
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase update error:", error);
+        throw error;
+      }
+      
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["order-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["print-schedule"] });
       toast({ title: "Order status updated" });
     },
-    onError: (error: Error) => {
-      toast({ title: "Error updating order", description: error.message, variant: "destructive" });
+    onError: (error: any) => {
+      console.error("Order update error:", error);
+      const errorMessage = error?.message || error?.code || "Unknown error";
+      toast({ 
+        title: "Error updating order", 
+        description: errorMessage,
+        variant: "destructive" 
+      });
     },
   });
 }

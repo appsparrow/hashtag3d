@@ -13,7 +13,9 @@ import Checkout from "./pages/Checkout";
 import Dashboard from "./pages/admin/Dashboard";
 import Products from "./pages/admin/Products";
 import ProductForm from "./pages/admin/ProductForm";
+import ProductImport from "./pages/admin/ProductImport";
 import Orders from "./pages/admin/Orders";
+import PrintSchedule from "./pages/admin/PrintSchedule";
 import Settings from "./pages/admin/Settings";
 import Pricing from "./pages/admin/Pricing";
 import Configuration from "./pages/admin/Configuration";
@@ -28,7 +30,7 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <BrowserRouter future={{ v7_relativeSplatPath: true }}>
+          <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
@@ -39,7 +41,9 @@ const App = () => (
               <Route path="/admin/products" element={<Products />} />
               <Route path="/admin/products/new" element={<ProductForm />} />
               <Route path="/admin/products/:id" element={<ProductForm />} />
+              <Route path="/admin/products/import" element={<ProductImport />} />
               <Route path="/admin/orders" element={<Orders />} />
+              <Route path="/admin/print-schedule" element={<PrintSchedule />} />
               <Route path="/admin/settings" element={<Settings />} />
               <Route path="/admin/pricing" element={<Pricing />} />
               <Route path="/admin/configuration" element={<Configuration />} />

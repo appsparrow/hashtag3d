@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import {
   useMaterials, useCreateMaterial, useUpdateMaterial, useDeleteMaterial,
-  useColors, useCreateColor, useDeleteColor,
+  useColors, useCreateColor, useUpdateColor, useDeleteColor,
   useComplexitySettings, useUpdateComplexitySetting,
   usePricingSettings, useUpdatePricingSetting,
   MaterialCategory,
@@ -27,12 +27,13 @@ export default function Configuration() {
   const updateMaterial = useUpdateMaterial();
   const deleteMaterial = useDeleteMaterial();
   const createColor = useCreateColor();
+  const updateColor = useUpdateColor();
   const deleteColor = useDeleteColor();
   const updateComplexity = useUpdateComplexitySetting();
   const updatePricingSetting = useUpdatePricingSetting();
 
   const [newMaterial, setNewMaterial] = useState({ name: "", category: "standard" as MaterialCategory, cost_per_gram: 0.03, upcharge: 0 });
-  const [newColor, setNewColor] = useState({ name: "", hex_color: "#000000", material_id: "" });
+  const [newColor, setNewColor] = useState({ name: "", hex_color: "#000000", material_id: "", stock_quantity: 1000 });
 
   const isLoading = loadingMaterials || loadingColors || loadingComplexity || loadingPricing;
 
@@ -152,7 +153,7 @@ export default function Configuration() {
                 <CardDescription>Colors are grouped by material category for pricing. Premium/Ultra colors have upcharges.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid sm:grid-cols-4 gap-2">
+                <div className="grid sm:grid-cols-5 gap-2">
                   <Input
                     placeholder="Color name"
                     value={newColor.name}
@@ -176,10 +177,16 @@ export default function Configuration() {
                       ))}
                     </SelectContent>
                   </Select>
+                  <Input
+                    type="number"
+                    placeholder="Stock (g)"
+                    value={newColor.stock_quantity}
+                    onChange={(e) => setNewColor(p => ({ ...p, stock_quantity: Number(e.target.value) }))}
+                  />
                   <Button
                     onClick={() => {
                       createColor.mutate({ ...newColor, is_active: true, material_id: newColor.material_id || null });
-                      setNewColor({ name: "", hex_color: "#000000", material_id: "" });
+                      setNewColor({ name: "", hex_color: "#000000", material_id: "", stock_quantity: 1000 });
                     }}
                     disabled={!newColor.name || createColor.isPending}
                   >
@@ -203,14 +210,42 @@ export default function Configuration() {
                             </span>
                           )}
                         </h4>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-col gap-2">
                           {catColors.map(color => (
-                            <div key={color.id} className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-full border border-border">
-                              <span className="w-4 h-4 rounded-full border" style={{ backgroundColor: color.hex_color }} />
-                              <span className="text-sm">{color.name}</span>
-                              <Button variant="ghost" size="icon" className="w-5 h-5" onClick={() => deleteColor.mutate(color.id)}>
-                                <Trash2 className="w-3 h-3 text-destructive" />
-                              </Button>
+                            <div key={color.id} className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg border border-border">
+                              <Input 
+                                type="color"
+                                value={color.hex_color}
+                                onChange={(e) => updateColor.mutate({ id: color.id, hex_color: e.target.value })}
+                                className="w-8 h-8 p-0 border-none rounded-full overflow-hidden shrink-0 cursor-pointer"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <Input
+                                  value={color.name}
+                                  onChange={(e) => {
+                                    // Update locally first for responsiveness (optional, but good for typing)
+                                    // For now, we rely on onBlur to save to DB to avoid too many requests
+                                  }}
+                                  onBlur={(e) => {
+                                    if (e.target.value !== color.name) {
+                                      updateColor.mutate({ id: color.id, name: e.target.value });
+                                    }
+                                  }}
+                                  className="h-8 text-sm font-medium bg-transparent border-transparent hover:border-input focus:bg-background focus:border-input px-1"
+                                />
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <Label className="text-xs text-muted-foreground whitespace-nowrap hidden sm:block">Stock (g):</Label>
+                                <Input 
+                                  type="number" 
+                                  className="w-20 h-8 text-right" 
+                                  defaultValue={color.stock_quantity ?? 1000}
+                                  onBlur={(e) => updateColor.mutate({ id: color.id, stock_quantity: Number(e.target.value) })}
+                                />
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => deleteColor.mutate(color.id)}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
                             </div>
                           ))}
                         </div>

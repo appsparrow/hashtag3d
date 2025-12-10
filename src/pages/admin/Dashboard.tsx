@@ -20,7 +20,7 @@ export default function Dashboard() {
     },
     {
       title: "Active Orders",
-      value: (orderStats?.pending ?? 0) + (orderStats?.in_progress ?? 0),
+      value: (orderStats?.pending ?? 0) + (orderStats?.confirmed ?? 0) + (orderStats?.printing ?? 0) + (orderStats?.finishing ?? 0) + (orderStats?.ready ?? 0),
       icon: ShoppingCart,
       color: "text-primary",
       bgColor: "bg-primary/10",
@@ -33,8 +33,8 @@ export default function Dashboard() {
       bgColor: "bg-amber-500/10",
     },
     {
-      title: "Completed",
-      value: orderStats?.completed ?? 0,
+      title: "Delivered",
+      value: orderStats?.delivered ?? 0,
       icon: CheckCircle,
       color: "text-green-500",
       bgColor: "bg-green-500/10",

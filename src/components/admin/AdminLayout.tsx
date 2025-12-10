@@ -13,7 +13,9 @@ import {
   LayoutDashboard,
   Settings,
   Calculator,
-  Building2
+  Building2,
+  Clock,
+  Upload
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { usePendingOrdersCount } from "@/hooks/usePendingOrdersCount";
@@ -33,7 +35,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/products", label: "Products", icon: Package },
     { href: "/admin/products/new", label: "Add Product", icon: Plus },
+    { href: "/admin/products/import", label: "Import Products", icon: Upload },
     { href: "/admin/orders", label: "Orders", icon: ShoppingCart, badge: pendingCount > 0 ? pendingCount : undefined },
+    { href: "/admin/print-schedule", label: "Print Schedule", icon: Clock },
     { href: "/admin/pricing", label: "Pricing", icon: Calculator },
     { href: "/admin/configuration", label: "Configuration", icon: Settings },
     { href: "/admin/settings", label: "Settings", icon: Building2 },

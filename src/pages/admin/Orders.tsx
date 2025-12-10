@@ -31,15 +31,21 @@ import defaultProductImage from "@/assets/default-product.jpg";
 
 const statusColors: Record<OrderStatus, string> = {
   pending: "bg-amber-500/10 text-amber-600 border-amber-500/20",
-  in_progress: "bg-blue-500/10 text-blue-600 border-blue-500/20",
-  completed: "bg-green-500/10 text-green-600 border-green-500/20",
+  confirmed: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+  printing: "bg-indigo-500/10 text-indigo-600 border-indigo-500/20",
+  finishing: "bg-purple-500/10 text-purple-600 border-purple-500/20",
+  ready: "bg-cyan-500/10 text-cyan-600 border-cyan-500/20",
+  delivered: "bg-green-500/10 text-green-600 border-green-500/20",
   cancelled: "bg-red-500/10 text-red-600 border-red-500/20",
 };
 
 const statusLabels: Record<OrderStatus, string> = {
   pending: "Pending",
-  in_progress: "In Progress",
-  completed: "Completed",
+  confirmed: "Confirmed",
+  printing: "Printing",
+  finishing: "Finishing",
+  ready: "Ready",
+  delivered: "Delivered",
   cancelled: "Cancelled",
 };
 
@@ -116,8 +122,11 @@ export default function Orders() {
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="in_progress">In Progress</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="confirmed">Confirmed</SelectItem>
+              <SelectItem value="printing">Printing</SelectItem>
+              <SelectItem value="finishing">Finishing</SelectItem>
+              <SelectItem value="ready">Ready</SelectItem>
+              <SelectItem value="delivered">Delivered</SelectItem>
               <SelectItem value="cancelled">Cancelled</SelectItem>
             </SelectContent>
           </Select>
@@ -178,8 +187,11 @@ export default function Orders() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="in_progress">In Progress</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
+                          <SelectItem value="confirmed">Confirmed</SelectItem>
+                          <SelectItem value="printing">Printing</SelectItem>
+                          <SelectItem value="finishing">Finishing</SelectItem>
+                          <SelectItem value="ready">Ready</SelectItem>
+                          <SelectItem value="delivered">Delivered</SelectItem>
                           <SelectItem value="cancelled">Cancelled</SelectItem>
                         </SelectContent>
                       </Select>
