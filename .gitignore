@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Lockfiles - Use npm for Cloudflare Pages deployment
+# bun.lockb is kept locally but not committed to avoid Cloudflare build issues
+bun.lockb
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
