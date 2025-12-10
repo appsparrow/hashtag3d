@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useProducts } from "@/hooks/useProducts";
 import { usePricingSettings, useColors, useMaterials, MaterialCategory } from "@/hooks/usePricing";
 import { useLocalSetting } from "@/hooks/useLocalSettings";
@@ -256,6 +257,139 @@ export default function ProductDetail() {
               {colorSlots.length > 0 && product.colors && product.colors.length > 0 && (
                 <div className="space-y-3">
                   <Label>Select Colors ({colorSlots.length} selection{colorSlots.length > 1 ? "s" : ""})</Label>
+                  
+                  {/* Color Swatches Preview - Accordion Style */}
+                  <div className="rounded-lg border bg-muted/30">
+                    <Accordion type="single" collapsible className="w-full">
+                      <AccordionItem value="colors" className="border-0">
+                        <AccordionTrigger className="px-4 py-3 text-sm font-medium">
+                          Available Colors (View Only)
+                        </AccordionTrigger>
+                        <AccordionContent className="px-4 pb-4 space-y-4">
+                          {/* Standard Colors */}
+                          {availableColors.standard.length > 0 && (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="secondary" className="text-xs">Standard</Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  ({availableColors.standard.length} color{availableColors.standard.length !== 1 ? 's' : ''})
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {availableColors.standard.map(c => {
+                                  const stock = c.stock_quantity ?? 1000;
+                                  const isOutOfStock = stock < 100;
+                                  return (
+                                    <div
+                                      key={c.id}
+                                      className={`flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs ${
+                                        isOutOfStock 
+                                          ? "opacity-40 border-dashed bg-muted" 
+                                          : "border-border bg-background"
+                                      }`}
+                                      title={isOutOfStock ? `${c.name} - Out of Stock` : `${c.name} (${stock}g available)`}
+                                    >
+                                      <span 
+                                        className="w-4 h-4 rounded-full border border-border/50 shrink-0" 
+                                        style={{ backgroundColor: c.hex_color }}
+                                      />
+                                      <span className={isOutOfStock ? "line-through text-muted-foreground" : ""}>
+                                        {c.name}
+                                      </span>
+                                      {isOutOfStock && (
+                                        <span className="text-[10px] text-destructive">(OOS)</span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Premium Colors */}
+                          {availableColors.premium.length > 0 && (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="default" className="text-xs">Premium (+{currencySymbol}{getSetting("color_premium_upcharge")})</Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  ({availableColors.premium.length} color{availableColors.premium.length !== 1 ? 's' : ''})
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {availableColors.premium.map(c => {
+                                  const stock = c.stock_quantity ?? 1000;
+                                  const isOutOfStock = stock < 100;
+                                  return (
+                                    <div
+                                      key={c.id}
+                                      className={`flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs ${
+                                        isOutOfStock 
+                                          ? "opacity-40 border-dashed bg-muted" 
+                                          : "border-border bg-background"
+                                      }`}
+                                      title={isOutOfStock ? `${c.name} - Out of Stock` : `${c.name} (${stock}g available)`}
+                                    >
+                                      <span 
+                                        className="w-4 h-4 rounded-full border border-border/50 shrink-0" 
+                                        style={{ backgroundColor: c.hex_color }}
+                                      />
+                                      <span className={isOutOfStock ? "line-through text-muted-foreground" : ""}>
+                                        {c.name}
+                                      </span>
+                                      {isOutOfStock && (
+                                        <span className="text-[10px] text-destructive">(OOS)</span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Ultra Colors */}
+                          {availableColors.ultra.length > 0 && (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="destructive" className="text-xs">Ultra (+{currencySymbol}{getSetting("color_ultra_upcharge")})</Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  ({availableColors.ultra.length} color{availableColors.ultra.length !== 1 ? 's' : ''})
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {availableColors.ultra.map(c => {
+                                  const stock = c.stock_quantity ?? 1000;
+                                  const isOutOfStock = stock < 100;
+                                  return (
+                                    <div
+                                      key={c.id}
+                                      className={`flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs ${
+                                        isOutOfStock 
+                                          ? "opacity-40 border-dashed bg-muted" 
+                                          : "border-border bg-background"
+                                      }`}
+                                      title={isOutOfStock ? `${c.name} - Out of Stock` : `${c.name} (${stock}g available)`}
+                                    >
+                                      <span 
+                                        className="w-4 h-4 rounded-full border border-border/50 shrink-0" 
+                                        style={{ backgroundColor: c.hex_color }}
+                                      />
+                                      <span className={isOutOfStock ? "line-through text-muted-foreground" : ""}>
+                                        {c.name}
+                                      </span>
+                                      {isOutOfStock && (
+                                        <span className="text-[10px] text-destructive">(OOS)</span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  </div>
+
                   <div className="space-y-3">
                     {colorSlots.map((slot) => (
                       <div key={slot.id} className="space-y-1.5">
