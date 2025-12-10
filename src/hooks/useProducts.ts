@@ -97,16 +97,27 @@ export function useCreateProduct() {
   
   return useMutation({
     mutationFn: async (product: CreateProductData) => {
-      // Exclude product_number from insert - let DB generate or leave null
-      const { product_number, ...productData } = product as any;
+      // TEMPORARY FIX: Generate random product number on client to bypass DB issue
+      const randomSuffix = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+      const tempProductNumber = `1215${randomSuffix}`;
+      
+      const productData = { 
+        ...product, 
+        product_number: tempProductNumber // Force send a number
+      };
+      
+      console.log("Creating product with FORCED number:", tempProductNumber);
       
       const { data, error } = await supabase
         .from("products")
-        .insert(productData)
+        .insert(productData as any)
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase insert error:", error);
+        throw error;
+      }
       return data;
     },
     onSuccess: () => {
@@ -114,7 +125,11 @@ export function useCreateProduct() {
       toast({ title: "Product created successfully" });
     },
     onError: (error: Error) => {
-      toast({ title: "Error creating product", description: error.message, variant: "destructive" });
+      let errorMessage = error.message;
+      if (error.message.includes("duplicate key") || error.message.includes("product_number")) {
+        errorMessage = "A product with this number already exists. Please try again or contact support if this persists.";
+      }
+      toast({ title: "Error creating product", description: errorMessage, variant: "destructive" });
     },
   });
 }

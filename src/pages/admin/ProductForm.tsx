@@ -289,13 +289,21 @@ export default function ProductForm() {
       accessories_cost: formData.accessories_cost,
     };
 
-    if (isEditing && id) {
-      await updateProduct.mutateAsync({ id, ...submitData } as any);
-    } else {
-      await createProduct.mutateAsync(submitData as any);
+    console.log("Form submit data:", submitData);
+
+    try {
+      if (isEditing && id) {
+        await updateProduct.mutateAsync({ id, ...submitData } as any);
+      } else {
+        await createProduct.mutateAsync(submitData as any);
+      }
+      
+      navigate("/admin/products");
+    } catch (error) {
+      // Error is already handled by the mutation's onError callback
+      // This catch prevents uncaught promise rejection
+      console.error("Error saving product:", error);
     }
-    
-    navigate("/admin/products");
   };
 
   if (productLoading && isEditing) {
