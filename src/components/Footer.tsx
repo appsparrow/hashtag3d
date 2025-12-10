@@ -1,4 +1,5 @@
-import { Printer, Mail, Instagram, MessageCircle, Youtube } from "lucide-react";
+import { Mail, Instagram, MessageCircle, Youtube } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export function Footer() {
   return (
@@ -7,12 +8,13 @@ export function Footer() {
         <div className="grid md:grid-cols-3 gap-8">
           {/* Brand */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Printer className="w-6 h-6 text-primary" />
-              <span className="text-xl font-display font-bold text-foreground">
-                3D Prints
-              </span>
-            </div>
+            <Link to="/" className="flex items-center gap-2">
+              <img 
+                src="/logo.png" 
+                alt="hashtag3D" 
+                className="h-8 w-auto"
+              />
+            </Link>
             <p className="text-muted-foreground text-sm">
               Custom 3D printing services for personalized gifts, home décor, 
               and unique creations. Bringing your ideas to life, one layer at a time.
@@ -85,7 +87,7 @@ export function Footer() {
         </div>
 
         <div className="mt-10 pt-8 border-t border-border text-center text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} 3D Prints. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} hashtag3D. All rights reserved.</p>
         </div>
       </div>
     </footer>

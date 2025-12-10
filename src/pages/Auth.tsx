@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Printer, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function Auth() {
@@ -71,8 +71,12 @@ export default function Auth() {
         
         <Card className="shadow-xl border-border/50">
           <CardHeader className="text-center space-y-4">
-            <div className="mx-auto w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <Printer className="w-8 h-8 text-primary" />
+            <div className="mx-auto flex items-center justify-center mb-2">
+              <img 
+                src="/logomark.png" 
+                alt="hashtag3D" 
+                className="w-16 h-16"
+              />
             </div>
             <div>
               <CardTitle className="text-2xl font-bold">

@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowDown, Printer, Settings } from "lucide-react";
+import { ArrowDown, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
 import heroBg from "@/assets/hero-bg.jpg";
 
@@ -29,8 +29,16 @@ export function Hero() {
       {/* Content */}
       <div className="relative z-10 container mx-auto px-4 text-center">
         <div className="max-w-3xl mx-auto space-y-8">
+          {/* Logo */}
+          <div className="flex justify-center mb-4">
+            <img 
+              src="/logo-H3D-hero.png" 
+              alt="hashtag3D" 
+              className="h-16 md:h-20 w-auto"
+            />
+          </div>
+          
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-foreground/10 backdrop-blur-sm border border-primary-foreground/20 text-primary-foreground animate-scale-in">
-            <Printer className="w-4 h-4" />
             <span className="text-sm font-medium">Custom 3D Printing Services</span>
           </div>
 
