@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useDeliveryAreas, useLocalSetting, useUpdateLocalSetting } from "@/hooks/useLocalSettings";
-import { MapPin, Plus, X, Save, Instagram, Loader2, Youtube, Building2, Mail, Phone, DollarSign, Gift, Globe } from "lucide-react";
+import { MapPin, Plus, X, Save, Instagram, Loader2, Youtube, Building2, Mail, Phone, DollarSign, Gift, Globe, LayoutGrid } from "lucide-react";
 
 const CURRENCIES = [
   { code: "USD", symbol: "$", name: "US Dollar" },
@@ -39,6 +39,7 @@ export default function Settings() {
   const { data: promoMessageSetting } = useLocalSetting("promo_message");
   const { data: tiktokSetting } = useLocalSetting("tiktok_url");
   const { data: defaultCountrySetting } = useLocalSetting("default_country");
+  const { data: homePageStyleSetting } = useLocalSetting("home_page_style");
   const updateSetting = useUpdateLocalSetting();
   
   const [areas, setAreas] = useState<string[]>([]);
@@ -58,6 +59,7 @@ export default function Settings() {
   const [promoMessage, setPromoMessage] = useState("Like & follow us on Instagram/TikTok for FREE delivery! Limited time offer.");
   const [tiktokUrl, setTiktokUrl] = useState("");
   const [defaultCountry, setDefaultCountry] = useState("United States");
+  const [homePageStyle, setHomePageStyle] = useState<"feed" | "classic">("feed");
 
   useEffect(() => {
     if (deliveryAreas) setAreas(deliveryAreas);
@@ -123,6 +125,10 @@ export default function Settings() {
     if (defaultCountrySetting?.setting_value) setDefaultCountry(defaultCountrySetting.setting_value as string);
   }, [defaultCountrySetting]);
 
+  useEffect(() => {
+    if (homePageStyleSetting?.setting_value) setHomePageStyle(homePageStyleSetting.setting_value as "feed" | "classic");
+  }, [homePageStyleSetting]);
+
   const handleAddArea = () => {
     if (newArea.trim() && !areas.includes(newArea.trim())) {
       setAreas([...areas, newArea.trim()]);
@@ -147,6 +153,7 @@ export default function Settings() {
   const handleSaveYoutube = () => updateSetting.mutateAsync({ key: "youtube_url", value: youtubeUrl });
   const handleSaveTiktok = () => updateSetting.mutateAsync({ key: "tiktok_url", value: tiktokUrl });
   const handleSaveCountry = () => updateSetting.mutateAsync({ key: "default_country", value: defaultCountry });
+  const handleSaveHomePageStyle = () => updateSetting.mutateAsync({ key: "home_page_style", value: homePageStyle });
   
   const handleSaveBusinessInfo = async () => {
     await updateSetting.mutateAsync({ key: "business_name", value: businessName });
@@ -411,6 +418,38 @@ export default function Settings() {
             <Button onClick={handleSaveCountry} disabled={updateSetting.isPending}>
               {updateSetting.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Save
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Home Page Style */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <LayoutGrid className="w-5 h-5 text-primary" />
+              Home Page Style
+            </CardTitle>
+            <CardDescription>Choose the default home page style for your shop.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Page Style</Label>
+              <Select value={homePageStyle} onValueChange={(v) => setHomePageStyle(v as "feed" | "classic")}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="feed">Feed Style (Social Media Style)</SelectItem>
+                  <SelectItem value="classic">Classic Style (Traditional E-commerce)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Feed style: Casual, Instagram-like product feed. Classic style: Traditional product grid with hero section.
+              </p>
+            </div>
+            <Button onClick={handleSaveHomePageStyle} disabled={updateSetting.isPending}>
+              {updateSetting.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              Save Home Page Style
             </Button>
           </CardContent>
         </Card>

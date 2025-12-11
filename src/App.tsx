@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import Index from "./pages/Index";
+import FeedHome from "./pages/FeedHome";
 import Auth from "./pages/Auth";
 import ProductDetail from "./pages/ProductDetail";
 import Cart from "./pages/Cart";
@@ -20,8 +21,19 @@ import Settings from "./pages/admin/Settings";
 import Pricing from "./pages/admin/Pricing";
 import Configuration from "./pages/admin/Configuration";
 import NotFound from "./pages/NotFound";
+import { useLocalSetting } from "@/hooks/useLocalSettings";
 
 const queryClient = new QueryClient();
+
+const HomePage = () => {
+  const { data: homePageStyleSetting } = useLocalSetting("home_page_style");
+  const style = (homePageStyleSetting?.setting_value as "feed" | "classic") || "feed";
+  
+  if (style === "classic") {
+    return <Index />;
+  }
+  return <FeedHome />;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -32,7 +44,9 @@ const App = () => (
           <Sonner />
           <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
             <Routes>
-              <Route path="/" element={<Index />} />
+              <Route path="/" element={<HomePage />} />
+              <Route path="/classic" element={<Index />} />
+              <Route path="/feed" element={<FeedHome />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/product/:id" element={<ProductDetail />} />
               <Route path="/cart" element={<Cart />} />

@@ -1,7 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { ArrowDown, Settings } from "lucide-react";
-import { Link } from "react-router-dom";
-import heroBg from "@/assets/hero-bg.jpg";
 
 export function Hero() {
   const scrollToProducts = () => {
@@ -9,67 +6,35 @@ export function Hero() {
   };
 
   return (
-    <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
-      {/* Admin Link */}
-      <Link 
-        to="/auth" 
-        className="absolute top-4 right-4 z-20 p-2 rounded-lg bg-primary-foreground/10 backdrop-blur-sm text-primary-foreground/60 hover:text-primary-foreground transition-colors"
-      >
-        <Settings className="w-5 h-5" />
-      </Link>
+    <section className="relative h-screen w-full overflow-hidden text-white">
+      {/* Simple Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-[#3e47e0] via-[#e0469a] to-[#ffcc49]" />
 
-      {/* Background Image */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${heroBg})` }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-b from-foreground/70 via-foreground/50 to-background" />
-      </div>
-
-      {/* Content */}
-      <div className="relative z-10 container mx-auto px-4 text-center">
-        <div className="max-w-3xl mx-auto space-y-8">
-          {/* Logo */}
-          <div className="flex justify-center mb-4">
-            <img 
-              src="/logo-H3D-hero.png" 
-              alt="hashtag3D" 
-              className="h-16 md:h-20 w-auto"
-            />
-          </div>
-          
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-foreground/10 backdrop-blur-sm border border-primary-foreground/20 text-primary-foreground animate-scale-in">
-            <span className="text-sm font-medium">Custom 3D Printing Services</span>
-          </div>
-
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-primary-foreground leading-tight">
-            Bring Your Ideas
-            <span className="block text-amber-glow">To Life</span>
-          </h1>
-
-          <p className="text-lg md:text-xl text-primary-foreground/80 max-w-2xl mx-auto leading-relaxed">
-            From personalized keychains to unique home décor, I craft custom 3D printed creations 
-            tailored just for you. Browse my collection and find your next favorite piece.
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-            <Button variant="hero" size="xl" onClick={scrollToProducts}>
-              Browse Collection
-            </Button>
-            <Button variant="hero-outline" size="xl" onClick={scrollToProducts}>
-              Custom Orders
-            </Button>
-          </div>
+      {/* Hero Content */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center z-10">
+        <div className="flex justify-center mb-4">
+          <img 
+            src="/logo-H3D-hero.png" 
+            alt="hashtag3D" 
+            className="h-16 md:h-20 w-auto drop-shadow-[0_4px_15px_rgba(0,0,0,0.4)]"
+          />
         </div>
-
-        {/* Scroll Indicator */}
-        <button 
+        
+        <h1 className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold mb-3 drop-shadow-[0_4px_15px_rgba(0,0,0,0.4)]">
+          3D Print. Learn. Build. Donate.
+        </h1>
+        
+        <p className="text-base md:text-lg lg:text-xl mb-6 max-w-[420px] mx-auto text-white/95">
+          Fun toys, flexi creatures, figurines, and custom models made by a high-school maker.
+        </p>
+        
+        <Button 
           onClick={scrollToProducts}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 text-primary-foreground/60 hover:text-primary-foreground transition-colors animate-float"
-          aria-label="Scroll to products"
+          className="px-7 py-3 bg-white text-black font-semibold rounded-[10px] hover:bg-[#ffe9a4] hover:-translate-y-1 transition-all duration-300 shadow-lg"
+          size="lg"
         >
-          <ArrowDown className="w-6 h-6" />
-        </button>
+          Explore
+        </Button>
       </div>
     </section>
   );

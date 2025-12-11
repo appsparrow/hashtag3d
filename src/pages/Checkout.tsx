@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Copy, Truck, MapPin, Tag, PartyPopper, Package, Instagram, Youtube, Check } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Copy, Truck, MapPin, Tag, PartyPopper, Package, Instagram, Youtube, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -227,33 +227,34 @@ export default function Checkout() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto max-w-4xl px-4 py-8">
-        <Link to="/cart" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8">
+      <div className="container mx-auto max-w-4xl px-3 sm:px-4 py-4 sm:py-8">
+        <Link to="/cart" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 sm:mb-6 md:mb-8">
           <ArrowLeft className="w-4 h-4" />
-          Back to Cart
+          <span className="text-sm sm:text-base">Back to Cart</span>
         </Link>
 
-        <h1 className="text-3xl font-bold text-foreground mb-8">Checkout</h1>
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-4 sm:mb-6 md:mb-8">Checkout</h1>
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
           {/* Checkout Form */}
-          <form onSubmit={handleSubmit} className="lg:col-span-2 space-y-6">
+          <form onSubmit={handleSubmit} className="lg:col-span-2 space-y-3 sm:space-y-4 md:space-y-6">
             {/* Step 1: Contact Info */}
-            <div className="p-6 rounded-xl border bg-card space-y-4">
-              <h2 className="text-lg font-semibold text-foreground">1. Contact Information</h2>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name *</Label>
+            <div className="p-3 sm:p-4 md:p-6 rounded-xl border bg-card space-y-3 sm:space-y-4">
+              <h2 className="text-sm sm:text-base md:text-lg font-semibold text-foreground">1. Contact Information</h2>
+              <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5 sm:space-y-2">
+                  <Label htmlFor="name" className="text-xs sm:text-sm">Full Name *</Label>
                   <Input
                     id="name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="Your name"
                     required
+                    className="text-sm sm:text-base"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email *</Label>
+                <div className="space-y-1.5 sm:space-y-2">
+                  <Label htmlFor="email" className="text-xs sm:text-sm">Email *</Label>
                   <Input
                     id="email"
                     type="email"
@@ -261,63 +262,69 @@ export default function Checkout() {
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="you@example.com"
                     required
+                    className="text-sm sm:text-base"
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone (optional)</Label>
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label htmlFor="phone" className="text-xs sm:text-sm">Phone (optional)</Label>
                 <Input
                   id="phone"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   placeholder="(555) 123-4567"
+                  className="text-sm sm:text-base"
                 />
               </div>
             </div>
 
             {/* Step 2: Address (Auto-detect) */}
-            <div className="p-6 rounded-xl border bg-card space-y-4">
-              <h2 className="text-lg font-semibold text-foreground">2. Delivery Address</h2>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="addressLine1">Address Line 1 *</Label>
+            <div className="p-3 sm:p-4 md:p-6 rounded-xl border bg-card space-y-3 sm:space-y-4">
+              <h2 className="text-sm sm:text-base md:text-lg font-semibold text-foreground">2. Delivery Address</h2>
+              <div className="space-y-3 sm:space-y-4">
+                <div className="space-y-1.5 sm:space-y-2">
+                  <Label htmlFor="addressLine1" className="text-xs sm:text-sm">Address Line 1 *</Label>
                   <Input
                     id="addressLine1"
                     value={formData.addressLine1}
                     onChange={(e) => setFormData({ ...formData, addressLine1: e.target.value })}
                     placeholder="123 Main Street"
                     required
+                    className="text-sm sm:text-base"
                   />
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="city">City *</Label>
+                <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <Label htmlFor="city" className="text-xs sm:text-sm">City *</Label>
                     <Input
                       id="city"
                       value={formData.city}
                       onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                       placeholder="Atlanta"
                       required
+                      className="text-sm sm:text-base"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="state">State *</Label>
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <Label htmlFor="state" className="text-xs sm:text-sm">State *</Label>
                     <Input
                       id="state"
                       value={formData.state}
                       onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                       placeholder="GA"
                       required
+                      className="text-sm sm:text-base"
                     />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="country">Country</Label>
+                <div className="space-y-1.5 sm:space-y-2">
+                  <Label htmlFor="country" className="text-xs sm:text-sm">Country</Label>
                   <Input
                     id="country"
                     value={formData.country}
                     onChange={(e) => setFormData({ ...formData, country: e.target.value })}
                     placeholder="United States"
+                    className="text-sm sm:text-base"
                   />
                   <p className="text-xs text-muted-foreground">We currently deliver only in {defaultCountry}</p>
                 </div>
@@ -327,25 +334,25 @@ export default function Checkout() {
               {formData.city.length > 2 && (
                 <>
                   {isInDeliveryArea ? (
-                    <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20 flex items-start gap-3">
-                      <PartyPopper className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                    <div className="p-2.5 sm:p-3 md:p-4 rounded-lg bg-green-500/10 border border-green-500/20 flex items-start gap-2 sm:gap-3">
+                      <PartyPopper className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 mt-0.5 flex-shrink-0" />
                       <div>
-                        <p className="font-medium text-green-700 dark:text-green-400">
+                        <p className="text-xs sm:text-sm md:text-base font-medium text-green-700 dark:text-green-400">
                           🎉 Good news! We deliver to your area.
                         </p>
-                        <p className="text-sm text-green-600 dark:text-green-500">
+                        <p className="text-xs sm:text-sm text-green-600 dark:text-green-500">
                           You can choose Pickup (FREE) or Delivery ({currencySymbol}{deliveryFee.toFixed(2)}).
                         </p>
                       </div>
                     </div>
                   ) : (
-                    <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-start gap-3">
-                      <Package className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <div className="p-2.5 sm:p-3 md:p-4 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-start gap-2 sm:gap-3">
+                      <Package className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 mt-0.5 flex-shrink-0" />
                       <div>
-                        <p className="font-medium text-blue-700 dark:text-blue-400">
+                        <p className="text-xs sm:text-sm md:text-base font-medium text-blue-700 dark:text-blue-400">
                           📦 We don't deliver to your address, but we can ship it!
                         </p>
-                        <p className="text-sm text-blue-600 dark:text-blue-500">
+                        <p className="text-xs sm:text-sm text-blue-600 dark:text-blue-500">
                           {subtotal >= freeShippingThreshold 
                             ? "You qualify for FREE shipping!" 
                             : `Free shipping on orders over ${currencySymbol}${freeShippingThreshold}.`}
@@ -359,34 +366,34 @@ export default function Checkout() {
 
             {/* Step 3: Delivery Options (only show after address entered) */}
             {formData.city.length > 2 && (
-              <div className="p-6 rounded-xl border bg-card space-y-4">
-                <h2 className="text-lg font-semibold text-foreground">3. Delivery Option</h2>
+              <div className="p-3 sm:p-4 md:p-6 rounded-xl border bg-card space-y-3 sm:space-y-4">
+                <h2 className="text-sm sm:text-base md:text-lg font-semibold text-foreground">3. Delivery Option</h2>
                 
                 <RadioGroup value={fulfillmentType} onValueChange={(v) => setFulfillmentType(v as FulfillmentType)}>
                   {/* Pickup - only if in delivery area */}
                   {isInDeliveryArea && (
-                    <div className="flex items-center space-x-3 p-4 rounded-lg border hover:bg-muted/50 cursor-pointer">
-                      <RadioGroupItem value="pickup" id="pickup" />
+                    <div className="flex items-center space-x-2 sm:space-x-3 p-2.5 sm:p-3 md:p-4 rounded-lg border hover:bg-muted/50 cursor-pointer">
+                      <RadioGroupItem value="pickup" id="pickup" className="flex-shrink-0" />
                       <Label htmlFor="pickup" className="flex-1 cursor-pointer">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-primary" />
-                          <span className="font-medium">Pickup</span>
-                          <span className="ml-auto text-green-600 font-semibold">FREE</span>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary flex-shrink-0" />
+                          <span className="font-medium text-xs sm:text-sm md:text-base">Pickup</span>
+                          <span className="ml-auto text-green-600 font-semibold text-xs sm:text-sm md:text-base">FREE</span>
                         </div>
-                        <p className="text-sm text-muted-foreground mt-1">Pick up from our location in {detectedZone}</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground mt-1">Pick up from our location in {detectedZone}</p>
                       </Label>
                     </div>
                   )}
                   
                   {/* Delivery - only if in delivery area */}
                   {isInDeliveryArea && (
-                    <div className="flex items-center space-x-3 p-4 rounded-lg border hover:bg-muted/50 cursor-pointer">
-                      <RadioGroupItem value="delivery" id="delivery" />
+                    <div className="flex items-center space-x-2 sm:space-x-3 p-2.5 sm:p-3 md:p-4 rounded-lg border hover:bg-muted/50 cursor-pointer">
+                      <RadioGroupItem value="delivery" id="delivery" className="flex-shrink-0" />
                       <Label htmlFor="delivery" className="flex-1 cursor-pointer">
-                        <div className="flex items-center gap-2">
-                          <Truck className="w-4 h-4 text-primary" />
-                          <span className="font-medium">Local Delivery</span>
-                          <span className="ml-auto font-semibold">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Truck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary flex-shrink-0" />
+                          <span className="font-medium text-xs sm:text-sm md:text-base">Local Delivery</span>
+                          <span className="ml-auto font-semibold text-xs sm:text-sm md:text-base">
                             {promoApplied ? (
                               <span className="text-green-600">FREE</span>
                             ) : (
@@ -394,20 +401,20 @@ export default function Checkout() {
                             )}
                           </span>
                         </div>
-                        <p className="text-sm text-muted-foreground mt-1">We'll deliver to your address</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground mt-1">We'll deliver to your address</p>
                       </Label>
                     </div>
                   )}
 
                   {/* Shipping - only if NOT in delivery area */}
                   {!isInDeliveryArea && (
-                    <div className="flex items-center space-x-3 p-4 rounded-lg border hover:bg-muted/50 cursor-pointer">
-                      <RadioGroupItem value="shipping" id="shipping" />
+                    <div className="flex items-center space-x-2 sm:space-x-3 p-2.5 sm:p-3 md:p-4 rounded-lg border hover:bg-muted/50 cursor-pointer">
+                      <RadioGroupItem value="shipping" id="shipping" className="flex-shrink-0" />
                       <Label htmlFor="shipping" className="flex-1 cursor-pointer">
-                        <div className="flex items-center gap-2">
-                          <Package className="w-4 h-4 text-primary" />
-                          <span className="font-medium">Shipping</span>
-                          <span className="ml-auto font-semibold">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Package className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary flex-shrink-0" />
+                          <span className="font-medium text-xs sm:text-sm md:text-base">Shipping</span>
+                          <span className="ml-auto font-semibold text-xs sm:text-sm md:text-base">
                             {subtotal >= freeShippingThreshold ? (
                               <span className="text-green-600">FREE</span>
                             ) : (
@@ -415,7 +422,7 @@ export default function Checkout() {
                             )}
                           </span>
                         </div>
-                        <p className="text-sm text-muted-foreground mt-1">
+                        <p className="text-xs md:text-sm text-muted-foreground mt-1">
                           {subtotal >= freeShippingThreshold 
                             ? "Free shipping applied!" 
                             : `Add ${currencySymbol}${(freeShippingThreshold - subtotal).toFixed(2)} more for free shipping`}
@@ -429,8 +436,8 @@ export default function Checkout() {
 
             {/* Step 4: Free Shipping Promo (only for local delivery when promo is enabled) */}
             {fulfillmentType === "delivery" && !promoApplied && promoEnabled && (
-              <div className="p-6 rounded-xl border bg-card space-y-4">
-                <h2 className="text-lg font-semibold text-foreground">4. Get FREE Delivery!</h2>
+              <div className="p-4 md:p-6 rounded-xl border bg-card space-y-3 md:space-y-4">
+                <h2 className="text-base md:text-lg font-semibold text-foreground">4. Get FREE Delivery!</h2>
                 <div className="p-4 rounded-lg bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20">
                   <p className="text-foreground mb-4">
                     🎉 <strong>One-time FREE delivery offer!</strong><br/>
@@ -521,13 +528,14 @@ export default function Checkout() {
             )}
 
             {/* Step 5: Order Notes */}
-            <div className="p-6 rounded-xl border bg-card space-y-4">
-              <h2 className="text-lg font-semibold text-foreground">{fulfillmentType === "delivery" && promoEnabled ? "5" : "4"}. Any Special Instructions?</h2>
+            <div className="p-3 sm:p-4 md:p-6 rounded-xl border bg-card space-y-3 sm:space-y-4">
+              <h2 className="text-sm sm:text-base md:text-lg font-semibold text-foreground">{fulfillmentType === "delivery" && promoEnabled ? "5" : "4"}. Any Special Instructions?</h2>
               <Textarea
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 rows={3}
                 placeholder="Optional notes..."
+                className="text-sm sm:text-base"
               />
             </div>
 
@@ -535,36 +543,46 @@ export default function Checkout() {
             <Button 
               type="submit" 
               size="lg" 
-              className="w-full text-lg py-6" 
+              className="w-full text-sm sm:text-base py-5 sm:py-6" 
               disabled={isSubmitting || !canSubmit}
             >
-              {isSubmitting ? "Submitting..." : `Place Order – ${currencySymbol}${total.toFixed(2)}`}
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <span className="text-xs sm:text-base">Submitting...</span>
+                </>
+              ) : (
+                <>
+                  <span className="hidden sm:inline">Place Order – </span>
+                  <span>{currencySymbol}{total.toFixed(2)}</span>
+                </>
+              )}
             </Button>
           </form>
 
           {/* Order Summary */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-8 p-6 rounded-xl border bg-card space-y-4">
-              <h2 className="text-lg font-semibold text-foreground">Order Summary</h2>
+          <div className="lg:col-span-1 order-first lg:order-last">
+            <div className="lg:sticky lg:top-8 p-3 sm:p-4 md:p-6 rounded-xl border bg-card space-y-3 sm:space-y-4">
+              <h2 className="text-sm sm:text-base md:text-lg font-semibold text-foreground">Order Summary</h2>
               
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {items.map((item) => {
                   const imageUrl = item.product?.images?.[0] || defaultProductImage;
                   return (
-                    <div key={item.id} className="flex gap-3">
+                    <div key={item.id} className="flex gap-2 sm:gap-3">
                       <img
                         src={imageUrl}
                         alt={item.product?.title || "Product"}
-                        className="w-16 h-16 rounded-lg object-cover"
+                        className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 rounded-lg object-cover flex-shrink-0"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-foreground text-sm truncate">
+                        <p className="font-medium text-foreground text-xs sm:text-sm truncate">
                           {item.product?.title}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           Qty: {item.quantity}
                         </p>
-                        <p className="text-sm font-medium text-primary">
+                        <p className="text-xs sm:text-sm font-medium text-primary">
                           {currencySymbol}{(item.unit_price * item.quantity).toFixed(2)}
                         </p>
                       </div>
@@ -573,10 +591,10 @@ export default function Checkout() {
                 })}
               </div>
 
-              <div className="pt-4 border-t space-y-2 text-sm">
+              <div className="pt-3 sm:pt-4 border-t space-y-2 text-xs sm:text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span className="text-foreground">{currencySymbol}{subtotal.toFixed(2)}</span>
+                  <span className="text-foreground font-medium">{currencySymbol}{subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">
@@ -587,15 +605,15 @@ export default function Checkout() {
                   </span>
                 </div>
                 {promoApplied && (
-                  <div className="flex justify-between text-green-600">
+                  <div className="flex justify-between text-green-600 text-xs sm:text-sm">
                     <span>Promo ({validPromoCode})</span>
                     <span>-{currencySymbol}{deliveryFee.toFixed(2)}</span>
                   </div>
                 )}
               </div>
 
-              <div className="pt-4 border-t">
-                <div className="flex justify-between text-lg font-semibold">
+              <div className="pt-3 sm:pt-4 border-t">
+                <div className="flex justify-between text-base sm:text-lg font-semibold">
                   <span>Total</span>
                   <span className="text-primary">{currencySymbol}{total.toFixed(2)}</span>
                 </div>
