@@ -24,6 +24,7 @@ export interface Order {
   selected_infill: string | null;
   customization_details: string | null;
   notes: string | null;
+  social_media_url: string | null;
   created_at: string;
   updated_at: string;
   products?: Product | null;
@@ -138,7 +139,44 @@ export function useUpdateOrderStatus() {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["order-stats"] });
       queryClient.invalidateQueries({ queryKey: ["print-schedule"] });
+      queryClient.invalidateQueries({ queryKey: ["order-tracking"] });
       toast({ title: "Order status updated" });
+    },
+    onError: (error: any) => {
+      console.error("Order update error:", error);
+      const errorMessage = error?.message || error?.code || "Unknown error";
+      toast({ 
+        title: "Error updating order", 
+        description: errorMessage,
+        variant: "destructive" 
+      });
+    },
+  });
+}
+
+export function useUpdateOrder() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: { id: string; [key: string]: any }) => {
+      const { data, error } = await supabase
+        .from("orders")
+        .update(updates)
+        .eq("id", id)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error("Supabase update error:", error);
+        throw error;
+      }
+      
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["order-tracking"] });
+      toast({ title: "Order updated" });
     },
     onError: (error: any) => {
       console.error("Order update error:", error);

@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { useOrders, useUpdateOrderStatus, OrderStatus } from "@/hooks/useOrders";
+import { useOrders, useUpdateOrderStatus, useUpdateOrder, OrderStatus } from "@/hooks/useOrders";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +24,10 @@ import {
   Palette,
   Ruler,
   Sparkles,
-  FileText
+  FileText,
+  Instagram,
+  Youtube,
+  Save
 } from "lucide-react";
 import { format } from "date-fns";
 import defaultProductImage from "@/assets/default-product.jpg";
@@ -52,8 +55,10 @@ const statusLabels: Record<OrderStatus, string> = {
 export default function Orders() {
   const { data: orders, isLoading } = useOrders();
   const updateStatus = useUpdateOrderStatus();
+  const updateOrder = useUpdateOrder();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [editingSocialLink, setEditingSocialLink] = useState<Record<string, string>>({});
 
   // Filter orders based on search and status
   const filteredOrders = useMemo(() => {
@@ -320,6 +325,101 @@ export default function Orders() {
                         <p className="text-sm">{order.notes}</p>
                       </div>
                     )}
+
+                    {/* Social Media Link - Show at all stages */}
+                    <div className="p-4 rounded-lg bg-accent/10 border border-accent/30">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <Instagram className="w-4 h-4 text-accent" />
+                            <span className="font-medium text-accent">Social Media Link</span>
+                          </div>
+                          {!editingSocialLink[order.id] && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setEditingSocialLink({
+                                ...editingSocialLink,
+                                [order.id]: order.social_media_url || ""
+                              })}
+                            >
+                              {order.social_media_url ? "Edit Link" : "Add Link"}
+                            </Button>
+                          )}
+                        </div>
+
+                        {editingSocialLink[order.id] !== undefined ? (
+                          <div className="space-y-3">
+                            <div className="space-y-2">
+                              <label className="text-xs font-medium text-muted-foreground">
+                                Paste Instagram, TikTok, or YouTube URL
+                              </label>
+                              <Input
+                                placeholder="https://instagram.com/p/... or https://tiktok.com/@... or https://youtube.com/watch?v=..."
+                                value={editingSocialLink[order.id]}
+                                onChange={(e) => setEditingSocialLink({
+                                  ...editingSocialLink,
+                                  [order.id]: e.target.value
+                                })}
+                                className="text-sm"
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                The platform will be automatically detected from the URL
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                onClick={async () => {
+                                  await updateOrder.mutateAsync({
+                                    id: order.id,
+                                    social_media_url: editingSocialLink[order.id] || null,
+                                  });
+                                  const newLinks = { ...editingSocialLink };
+                                  delete newLinks[order.id];
+                                  setEditingSocialLink(newLinks);
+                                }}
+                                disabled={updateOrder.isPending}
+                              >
+                                <Save className="w-3 h-3 mr-1" />
+                                Save
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const newLinks = { ...editingSocialLink };
+                                  delete newLinks[order.id];
+                                  setEditingSocialLink(newLinks);
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {order.social_media_url ? (
+                              <a
+                                href={order.social_media_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 text-sm text-primary hover:underline"
+                              >
+                                {order.social_media_url.toLowerCase().includes("instagram.com") && <Instagram className="w-4 h-4" />}
+                                {order.social_media_url.toLowerCase().includes("tiktok.com") && (
+                                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+                                  </svg>
+                                )}
+                                {order.social_media_url.toLowerCase().includes("youtube.com") && <Youtube className="w-4 h-4" />}
+                                View Social Media Post
+                              </a>
+                            ) : (
+                              <p className="text-xs text-muted-foreground">No social media link added yet</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
                   </CardContent>
                 </Card>
               );

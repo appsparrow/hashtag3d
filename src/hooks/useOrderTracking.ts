@@ -7,6 +7,7 @@ export interface TrackedOrder {
   product_id: string | null;
   customer_name: string;
   status: "pending" | "confirmed" | "printing" | "finishing" | "ready" | "delivered" | "cancelled";
+  social_media_url: string | null;
   created_at: string;
   updated_at: string;
   products?: {
@@ -23,7 +24,7 @@ export function useOrderByNumber(orderNumber: string) {
       
       const { data, error } = await supabase
         .from("orders")
-        .select("id, order_number, product_id, customer_name, status, created_at, updated_at, products(title, images)")
+        .select("id, order_number, product_id, customer_name, status, created_at, updated_at, social_media_url, products(title, images)")
         .eq("order_number", orderNumber.toUpperCase())
         .maybeSingle();
       

@@ -16,8 +16,21 @@ export function ProductCard({ product }: ProductCardProps) {
   const [likes, setLikes] = useState(product.likes_count);
   const [liked, setLiked] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  const handleLike = async () => {
+  const images = product.images && product.images.length > 0 ? product.images : [defaultProductImage];
+  const hasMultipleImages = images.length > 1;
+  const currentImage = images[currentImageIndex] || defaultProductImage;
+
+  const handleImageClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (hasMultipleImages) {
+      setCurrentImageIndex((prev) => (prev + 1) % images.length);
+    }
+  };
+
+  const handleLike = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (isLiking) return;
 
     setIsLiking(true);
@@ -37,15 +50,14 @@ export function ProductCard({ product }: ProductCardProps) {
     }
   };
 
-  const imageUrl = product.images?.[0] || defaultProductImage;
-
   return (
     <Card className="group overflow-hidden card-hover">
       <div className="relative aspect-square overflow-hidden">
         <img
-          src={imageUrl}
+          src={currentImage}
           alt={product.title}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          onClick={handleImageClick}
+          className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${hasMultipleImages ? 'cursor-pointer' : ''}`}
         />
 
         {product.is_customizable && (
@@ -57,7 +69,7 @@ export function ProductCard({ product }: ProductCardProps) {
 
         <button
           onClick={handleLike}
-          className={`absolute top-3 right-3 p-2.5 rounded-full transition-all duration-300 ${
+          className={`absolute top-3 right-3 p-2.5 rounded-full transition-all duration-300 z-10 ${
             liked
               ? "bg-terracotta text-primary-foreground scale-110"
               : "bg-card/90 backdrop-blur-sm text-muted-foreground hover:text-terracotta hover:scale-110"
@@ -65,6 +77,27 @@ export function ProductCard({ product }: ProductCardProps) {
         >
           <Heart className={`w-4 h-4 ${liked ? "fill-current" : ""}`} />
         </button>
+
+        {/* Image Dots Indicator */}
+        {hasMultipleImages && (
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+            {images.map((_, index) => (
+              <button
+                key={index}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentImageIndex(index);
+                }}
+                className={`w-1.5 h-1.5 rounded-full transition-all ${
+                  index === currentImageIndex
+                    ? "bg-white w-4"
+                    : "bg-white/50 hover:bg-white/75"
+                }`}
+                aria-label={`Go to image ${index + 1}`}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       <CardContent className="p-5 space-y-4">

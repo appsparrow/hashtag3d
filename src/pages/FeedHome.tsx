@@ -1,10 +1,15 @@
+import { useState } from "react";
 import { FeedStyleProductGrid } from "@/components/FeedStyleProductGrid";
 import { Footer } from "@/components/Footer";
 import { CartButton } from "@/components/CartButton";
-import { Settings } from "lucide-react";
+import { OrderTracker } from "@/components/OrderTracker";
+import { DonationBanner } from "@/components/DonationBanner";
+import { Button } from "@/components/ui/button";
+import { Settings, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function FeedHome() {
+  const [trackerOpen, setTrackerOpen] = useState(false);
 
   return (
     <main className="min-h-screen relative bg-gradient-to-br from-background via-muted/30 to-background">
@@ -33,6 +38,21 @@ export default function FeedHome() {
         </div>
       </header>
 
+      {/* Donation Banner */}
+      <DonationBanner />
+
+      {/* Track Order Button */}
+      <div className="flex justify-center -mt-4 mb-6 sm:mb-8 px-4">
+        <Button 
+          variant="outline" 
+          onClick={() => setTrackerOpen(true)}
+          className="gap-2 text-sm sm:text-base"
+        >
+          <Search className="w-4 h-4" />
+          Track Your Order
+        </Button>
+      </div>
+
       {/* Feed Style Product Grid */}
       <FeedStyleProductGrid />
 
@@ -40,6 +60,9 @@ export default function FeedHome() {
       <div className="relative z-10 mt-10">
         <Footer />
       </div>
+
+      {/* Order Tracker Modal */}
+      <OrderTracker open={trackerOpen} onOpenChange={setTrackerOpen} />
     </main>
   );
 }

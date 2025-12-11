@@ -14,6 +14,7 @@ export function FeedStyleProductGrid() {
   const currencySymbol = (currencySymbolSetting?.setting_value as string) || "$";
   
   const [likedProducts, setLikedProducts] = useState<Set<string>>(new Set());
+  const [productImageIndices, setProductImageIndices] = useState<Record<string, number>>({});
 
   const activeProducts = products.filter(p => p.is_active).slice(0, 20);
 
@@ -100,8 +101,27 @@ export function FeedStyleProductGrid() {
         {activeProducts.map((product, index) => {
           const isLiked = likedProducts.has(product.id);
           const likes = product.likes_count || 0;
-          const imageUrl = product.images?.[0] || defaultProductImage;
+          const images = product.images && product.images.length > 0 ? product.images : [defaultProductImage];
+          const hasMultipleImages = images.length > 1;
           const casualText = getCasualDescription(product, index);
+
+          const currentImageIndex = productImageIndices[product.id] || 0;
+          const currentImage = images[currentImageIndex] || defaultProductImage;
+
+          const handleImageClick = (e: React.MouseEvent) => {
+            e.stopPropagation();
+            if (hasMultipleImages) {
+              const nextIndex = (currentImageIndex + 1) % images.length;
+              setProductImageIndices(prev => ({ ...prev, [product.id]: nextIndex }));
+            } else {
+              handlePrintThis(product.id);
+            }
+          };
+
+          const handleDotClick = (imgIndex: number, e: React.MouseEvent) => {
+            e.stopPropagation();
+            setProductImageIndices(prev => ({ ...prev, [product.id]: imgIndex }));
+          };
 
           return (
             <div
@@ -114,17 +134,36 @@ export function FeedStyleProductGrid() {
                 onClick={() => handlePrintThis(product.id)}
               >
                 <img
-                  src={imageUrl}
+                  src={currentImage}
                   alt={product.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  onClick={handleImageClick}
+                  className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${hasMultipleImages ? 'cursor-pointer' : ''}`}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 
                 {/* Customizable Badge */}
                 {product.is_customizable && (
-                  <div className="absolute top-3 left-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent text-accent-foreground text-xs font-semibold">
+                  <div className="absolute top-3 left-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent text-accent-foreground text-xs font-semibold z-10">
                     <Sparkles className="w-3 h-3" />
                     Customizable
+                  </div>
+                )}
+
+                {/* Image Dots Indicator */}
+                {hasMultipleImages && (
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+                    {images.map((_, imgIndex) => (
+                      <button
+                        key={imgIndex}
+                        onClick={(e) => handleDotClick(imgIndex, e)}
+                        className={`w-1.5 h-1.5 rounded-full transition-all ${
+                          imgIndex === currentImageIndex
+                            ? "bg-white w-4"
+                            : "bg-white/50 hover:bg-white/75"
+                        }`}
+                        aria-label={`Go to image ${imgIndex + 1}`}
+                      />
+                    ))}
                   </div>
                 )}
               </div>
