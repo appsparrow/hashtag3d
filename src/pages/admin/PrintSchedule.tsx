@@ -5,6 +5,8 @@ import { useUpdateOrderStatus } from "@/hooks/useOrders";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -40,6 +42,8 @@ export default function PrintSchedule() {
   const updateStatus = useUpdateOrderStatus();
   const [draggedOrderId, setDraggedOrderId] = useState<string | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [transitionTime, setTransitionTime] = useState<number>(15); // Default 15 minutes
+  const [startTime, setStartTime] = useState<Date>(new Date());
 
   // Calculate cumulative print times
   const scheduleWithTimes = useMemo(() => {
@@ -47,19 +51,23 @@ export default function PrintSchedule() {
     
     let cumulativeMinutes = 0;
     return orders.map((order, index) => {
-      const startTime = cumulativeMinutes;
+      // Add transition time before each order (except first)
+      if (index > 0) {
+        cumulativeMinutes += transitionTime;
+      }
+      const startTimeMinutes = cumulativeMinutes;
       cumulativeMinutes += order.print_time_minutes || 60;
-      const endTime = cumulativeMinutes;
+      const endTimeMinutes = cumulativeMinutes;
       
       return {
         ...order,
-        startTimeMinutes: startTime,
-        endTimeMinutes: endTime,
-        estimatedStartTime: addMinutes(new Date(), startTime),
-        estimatedEndTime: addMinutes(new Date(), endTime),
+        startTimeMinutes,
+        endTimeMinutes,
+        estimatedStartTime: addMinutes(startTime, startTimeMinutes),
+        estimatedEndTime: addMinutes(startTime, endTimeMinutes),
       };
     });
-  }, [orders]);
+  }, [orders, transitionTime, startTime]);
 
   const totalPrintTime = useMemo(() => {
     return scheduleWithTimes.reduce((sum, order) => sum + (order.print_time_minutes || 60), 0);
@@ -122,13 +130,44 @@ export default function PrintSchedule() {
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Print Schedule</h1>
-            <p className="text-muted-foreground mt-1">
-              Drag and drop to reorder • {scheduleWithTimes.length} orders • {formatDuration(totalPrintTime)} total print time
-            </p>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Print Schedule</h1>
+              <p className="text-muted-foreground mt-1">
+                Drag and drop to reorder • {scheduleWithTimes.length} orders • {formatDuration(totalPrintTime)} total print time
+              </p>
+            </div>
           </div>
+          
+          {/* Schedule Controls */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="start-time">Start Time</Label>
+                  <Input
+                    id="start-time"
+                    type="datetime-local"
+                    value={format(startTime, "yyyy-MM-dd'T'HH:mm")}
+                    onChange={(e) => setStartTime(new Date(e.target.value))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="transition-time">Transition Time (minutes)</Label>
+                  <Input
+                    id="transition-time"
+                    type="number"
+                    value={transitionTime}
+                    onChange={(e) => setTransitionTime(Number(e.target.value) || 15)}
+                    min={0}
+                    step={1}
+                  />
+                  <p className="text-xs text-muted-foreground">Time between prints (default: 15 min)</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Summary Stats */}

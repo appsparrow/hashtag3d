@@ -5,6 +5,7 @@ import { Footer } from "@/components/Footer";
 import { DonationBanner } from "@/components/DonationBanner";
 import { OrderTracker } from "@/components/OrderTracker";
 import { CartButton } from "@/components/CartButton";
+import { CustomOrderCTA } from "@/components/CustomOrderCTA";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 
@@ -34,6 +35,10 @@ const Index = () => {
       </div>
       
       <ProductGrid />
+      
+      {/* Custom Order CTA */}
+      <CustomOrderCTA />
+      
       <Footer />
       
       <OrderTracker open={trackerOpen} onOpenChange={setTrackerOpen} />

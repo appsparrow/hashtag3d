@@ -52,12 +52,15 @@ export function ProductCard({ product }: ProductCardProps) {
 
   return (
     <Card className="group overflow-hidden card-hover">
-      <div className="relative aspect-square overflow-hidden">
+      <div 
+        className="relative aspect-square overflow-hidden"
+        onClick={() => !hasMultipleImages && navigate(`/product/${product.id}`)}
+      >
         <img
           src={currentImage}
           alt={product.title}
-          onClick={handleImageClick}
-          className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${hasMultipleImages ? 'cursor-pointer' : ''}`}
+          onClick={hasMultipleImages ? handleImageClick : undefined}
+          className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${hasMultipleImages ? 'cursor-pointer' : 'cursor-pointer'}`}
         />
 
         {product.is_customizable && (

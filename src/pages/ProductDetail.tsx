@@ -228,9 +228,59 @@ export default function ProductDetail() {
               )}
             </div>
 
-            <div className="text-2xl sm:text-3xl font-bold text-primary">
-              {currencySymbol}{unitPrice.toFixed(2)}
-              <span className="text-xs sm:text-sm font-normal text-muted-foreground ml-2">each</span>
+            <div className="space-y-2">
+              <div className="text-2xl sm:text-3xl font-bold text-primary">
+                {currencySymbol}{unitPrice.toFixed(2)}
+                <span className="text-xs sm:text-sm font-normal text-muted-foreground ml-2">each</span>
+              </div>
+              {/* Price Breakdown - Mobile Visible */}
+              <div className="text-xs sm:text-sm text-muted-foreground space-y-1 p-2 sm:p-3 rounded-lg bg-muted/50 border border-border">
+                <div className="flex justify-between">
+                  <span>Base Price:</span>
+                  <span>{currencySymbol}{Number(product.price).toFixed(2)}</span>
+                </div>
+                {selectedColorsArray.length > 0 && (
+                  <>
+                    {selectedColorsArray.map((colorName, idx) => {
+                      const color = dbColors.find(c => c.name === colorName);
+                      const upcharge = color?.material?.category === "premium" 
+                        ? getSetting("color_premium_upcharge")
+                        : color?.material?.category === "ultra"
+                        ? getSetting("color_ultra_upcharge")
+                        : 0;
+                      if (upcharge === 0) return null;
+                      return (
+                        <div key={idx} className="flex justify-between">
+                          <span>{colorName} (Premium):</span>
+                          <span>+{currencySymbol}{upcharge.toFixed(2)}</span>
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
+                {selectedColorsArray.length > 1 && (
+                  <div className="flex justify-between">
+                    <span>Multi-color (AMS):</span>
+                    <span>+{currencySymbol}{(
+                      getSetting("ams_base_fee") + (selectedColorsArray.length - 1) * getSetting("ams_per_color_fee")
+                    ).toFixed(2)}</span>
+                  </div>
+                )}
+                {(() => {
+                  const gramsForSize = getGramsForSize(selectedSize);
+                  const costPerGram = getMaterialCostPerGram(selectedMaterialCategory);
+                  const sizeMaterialCost = gramsForSize * costPerGram;
+                  if (sizeMaterialCost > 0) {
+                    return (
+                      <div className="flex justify-between">
+                        <span>Material ({selectedSize}):</span>
+                        <span>+{currencySymbol}{sizeMaterialCost.toFixed(2)}</span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
             </div>
 
             <div className="space-y-3 sm:space-y-4 pt-3 sm:pt-4 border-t">

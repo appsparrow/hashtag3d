@@ -38,23 +38,8 @@ export default function FeedHome() {
         </div>
       </header>
 
-      {/* Donation Banner */}
-      <DonationBanner />
-
-      {/* Track Order Button */}
-      <div className="flex justify-center -mt-4 mb-6 sm:mb-8 px-4">
-        <Button 
-          variant="outline" 
-          onClick={() => setTrackerOpen(true)}
-          className="gap-2 text-sm sm:text-base"
-        >
-          <Search className="w-4 h-4" />
-          Track Your Order
-        </Button>
-      </div>
-
       {/* Feed Style Product Grid */}
-      <FeedStyleProductGrid />
+      <FeedStyleProductGrid trackerOpen={trackerOpen} setTrackerOpen={setTrackerOpen} />
 
       {/* Footer */}
       <div className="relative z-10 mt-10">

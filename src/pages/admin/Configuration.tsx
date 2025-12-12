@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,20 @@ export default function Configuration() {
 
   const [newMaterial, setNewMaterial] = useState({ name: "", category: "standard" as MaterialCategory, cost_per_gram: 0.03, upcharge: 0 });
   const [newColor, setNewColor] = useState({ name: "", hex_color: "#000000", material_id: "", stock_quantity: 1000 });
+  
+  // State for pricing settings to fix controlled input issue
+  const [amsBaseFee, setAmsBaseFee] = useState<number>(0);
+  const [amsPerColorFee, setAmsPerColorFee] = useState<number>(0);
+  const [profitMargin, setProfitMargin] = useState<number>(0);
+  
+  // Update state when settings load
+  useEffect(() => {
+    if (pricingSettings.length > 0) {
+      setAmsBaseFee(getSetting("ams_base_fee") || 0);
+      setAmsPerColorFee(getSetting("ams_per_color_fee") || 0);
+      setProfitMargin(getSetting("profit_margin") || 0);
+    }
+  }, [pricingSettings]);
 
   const isLoading = loadingMaterials || loadingColors || loadingComplexity || loadingPricing;
 
@@ -425,8 +439,12 @@ export default function Configuration() {
                         <span>$</span>
                         <Input
                           type="number"
-                          value={getSetting("ams_base_fee")}
-                          onChange={(e) => updatePricingSetting.mutate({ key: "ams_base_fee", value: Number(e.target.value) })}
+                          value={amsBaseFee}
+                          onChange={(e) => {
+                            const val = Number(e.target.value) || 0;
+                            setAmsBaseFee(val);
+                            updatePricingSetting.mutate({ key: "ams_base_fee", value: val });
+                          }}
                           step={0.5}
                         />
                       </div>
@@ -437,8 +455,12 @@ export default function Configuration() {
                         <span>$</span>
                         <Input
                           type="number"
-                          value={getSetting("ams_per_color_fee")}
-                          onChange={(e) => updatePricingSetting.mutate({ key: "ams_per_color_fee", value: Number(e.target.value) })}
+                          value={amsPerColorFee}
+                          onChange={(e) => {
+                            const val = Number(e.target.value) || 0;
+                            setAmsPerColorFee(val);
+                            updatePricingSetting.mutate({ key: "ams_per_color_fee", value: val });
+                          }}
                           step={0.5}
                         />
                       </div>
@@ -455,9 +477,15 @@ export default function Configuration() {
                       <div className="flex items-center gap-2">
                         <Input
                           type="number"
-                          value={getSetting("profit_margin")}
-                          onChange={(e) => updatePricingSetting.mutate({ key: "profit_margin", value: Number(e.target.value) })}
+                          value={profitMargin}
+                          onChange={(e) => {
+                            const val = Number(e.target.value) || 0;
+                            setProfitMargin(val);
+                            updatePricingSetting.mutate({ key: "profit_margin", value: val });
+                          }}
                           step={5}
+                          min={0}
+                          max={100}
                         />
                         <span>%</span>
                       </div>

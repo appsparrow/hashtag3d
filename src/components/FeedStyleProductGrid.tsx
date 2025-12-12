@@ -1,13 +1,20 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Heart, Sparkles } from "lucide-react";
+import { Heart, Sparkles, Search } from "lucide-react";
 import { useProducts } from "@/hooks/useProducts";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import defaultProductImage from "@/assets/default-product.jpg";
 import { useLocalSetting } from "@/hooks/useLocalSettings";
+import { DonationBanner } from "@/components/DonationBanner";
+import { CustomOrderCTA } from "@/components/CustomOrderCTA";
 
-export function FeedStyleProductGrid() {
+interface FeedStyleProductGridProps {
+  trackerOpen?: boolean;
+  setTrackerOpen?: (open: boolean) => void;
+}
+
+export function FeedStyleProductGrid({ trackerOpen = false, setTrackerOpen }: FeedStyleProductGridProps = {}) {
   const navigate = useNavigate();
   const { data: products = [], isLoading } = useProducts();
   const { data: currencySymbolSetting } = useLocalSetting("business_currency_symbol");
@@ -130,14 +137,13 @@ export function FeedStyleProductGrid() {
             >
               {/* Product Image */}
               <div
-                className="h-64 md:h-80 bg-muted relative overflow-hidden cursor-pointer group"
-                onClick={() => handlePrintThis(product.id)}
+                className="h-64 md:h-80 bg-muted relative overflow-hidden group"
               >
                 <img
                   src={currentImage}
                   alt={product.title}
-                  onClick={handleImageClick}
-                  className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${hasMultipleImages ? 'cursor-pointer' : ''}`}
+                  onClick={hasMultipleImages ? handleImageClick : () => handlePrintThis(product.id)}
+                  className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 cursor-pointer`}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 
@@ -216,25 +222,33 @@ export function FeedStyleProductGrid() {
         })}
       </div>
 
-      {/* Material Preview Section */}
-      {activeProducts.length > 0 && (
-        <section className="w-full max-w-xl mx-auto bg-card rounded-2xl shadow-lg p-4 md:p-6 mb-10 border border-border">
-          <h2 className="text-xl md:text-2xl font-semibold mb-4 text-foreground">Available Materials & Colors</h2>
-          <div className="grid grid-cols-5 md:grid-cols-10 gap-2 md:gap-3">
-            {Array.from({ length: 10 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-12 md:h-16 rounded-xl bg-gradient-to-br from-muted to-muted/80 flex items-center justify-center text-xs font-medium text-muted-foreground hover:scale-105 transition-transform cursor-pointer border border-border"
-              >
-                PLA
-              </div>
-            ))}
-          </div>
-          <p className="text-xs md:text-sm text-muted-foreground mt-4 text-center">
-            Choose from a wide variety of colors and materials when you order
+      {/* Giving Back & Track Order Section */}
+      <section className="w-full max-w-xl mx-auto space-y-6 mb-10 px-4">
+        {/* Giving Back Banner */}
+        <div className="bg-card rounded-2xl shadow-lg p-4 md:p-6 border border-border text-center">
+          <h2 className="text-xl md:text-2xl font-semibold mb-2 text-foreground">Giving Back</h2>
+          <p className="text-sm md:text-base text-muted-foreground">
+            A portion of every purchase is donated to support local community causes.
           </p>
-        </section>
-      )}
+        </div>
+
+        {/* Track Your Order */}
+        {setTrackerOpen && (
+          <div className="flex justify-center">
+            <Button 
+              variant="outline" 
+              onClick={() => setTrackerOpen(true)}
+              className="gap-2 text-sm sm:text-base w-full sm:w-auto"
+            >
+              <Search className="w-4 h-4" />
+              Track Your Order
+            </Button>
+          </div>
+        )}
+      </section>
+
+      {/* Custom Order CTA */}
+      <CustomOrderCTA />
 
       {/* Empty State */}
       {activeProducts.length === 0 && !isLoading && (

@@ -17,6 +17,7 @@ import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, Upload, X, Video, Image as ImageIcon, Palette, Package, Ruler, DollarSign, Plus, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useColors, usePricingSettings } from "@/hooks/usePricing";
+import { uploadMultipleToR2 } from "@/utils/r2Upload";
 
 const MATERIAL_CATEGORIES = [
   { value: "standard", label: "Standard", description: "Basic PLA materials" },
@@ -177,30 +178,38 @@ export default function ProductForm() {
     }
 
     setUploading(true);
-    const newImages: string[] = [];
-
-    for (const file of Array.from(files)) {
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("product-images")
-        .upload(fileName, file);
-
-      if (uploadError) {
-        toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" });
-        continue;
+    
+    try {
+      // Upload to Cloudflare R2
+      const uploadResults = await uploadMultipleToR2(Array.from(files), "products");
+      
+      if (uploadResults.length === 0) {
+        toast({ 
+          title: "Upload failed", 
+          description: "No images were uploaded. Please check your R2 configuration.",
+          variant: "destructive" 
+        });
+        setUploading(false);
+        return;
       }
 
-      const { data: urlData } = supabase.storage
-        .from("product-images")
-        .getPublicUrl(fileName);
-
-      newImages.push(urlData.publicUrl);
+      const newImageUrls = uploadResults.map(result => result.url);
+      setFormData({ ...formData, images: [...(formData.images ?? []), ...newImageUrls] });
+      
+      toast({ 
+        title: "Upload successful", 
+        description: `${uploadResults.length} image(s) uploaded to R2` 
+      });
+    } catch (error: any) {
+      console.error("Image upload error:", error);
+      toast({ 
+        title: "Upload failed", 
+        description: error.message || "Failed to upload images. Please check your R2 configuration.",
+        variant: "destructive" 
+      });
+    } finally {
+      setUploading(false);
     }
-
-    setFormData({ ...formData, images: [...(formData.images ?? []), ...newImages] });
-    setUploading(false);
   };
 
   const removeImage = (index: number) => {
@@ -676,10 +685,32 @@ export default function ProductForm() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Select which colors customers can choose from for each slot.
-                  Premium/Ultra colors add upcharges.
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    Select which colors customers can choose from for each slot.
+                    Premium/Ultra colors add upcharges.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const allColors = Object.values(colorsByCategory).flat().map(c => c.name);
+                      const allSelected = allColors.every(c => formData.colors?.includes(c));
+                      if (allSelected) {
+                        // Deselect all
+                        setFormData({ ...formData, colors: [] });
+                      } else {
+                        // Select all
+                        setFormData({ ...formData, colors: allColors });
+                      }
+                    }}
+                  >
+                    {Object.values(colorsByCategory).flat().every(c => formData.colors?.includes(c.name)) 
+                      ? "Deselect All" 
+                      : "Select All"}
+                  </Button>
+                </div>
                 {Object.entries(colorsByCategory).map(([category, colors]) => (
                   <div key={category} className="space-y-2">
                     <div className="flex items-center gap-2">
@@ -690,6 +721,29 @@ export default function ProductForm() {
                       {category === 'ultra' && (
                         <Badge variant="outline" className="text-xs">+${getUpcharge('color_ultra_upcharge').toFixed(2)}</Badge>
                       )}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => {
+                          const categoryColors = colors.map(c => c.name);
+                          const allCategorySelected = categoryColors.every(c => formData.colors?.includes(c));
+                          if (allCategorySelected) {
+                            // Deselect all in this category
+                            setFormData({ 
+                              ...formData, 
+                              colors: (formData.colors || []).filter(c => !categoryColors.includes(c))
+                            });
+                          } else {
+                            // Select all in this category
+                            const newColors = [...new Set([...(formData.colors || []), ...categoryColors])];
+                            setFormData({ ...formData, colors: newColors });
+                          }
+                        }}
+                      >
+                        {colors.every(c => formData.colors?.includes(c.name)) ? "Deselect" : "Select All"} {category}
+                      </Button>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {colors?.map((color) => (
